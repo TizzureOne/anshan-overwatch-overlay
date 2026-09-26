@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>AnshanOverlay</AssemblyName>
+    <RootNamespace>AnshanOverlay</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
+    <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <Product>安山守望 · 教学标注</Product>
+    <Description>守望先锋桌面战术标注与 OBS 透明输出</Description>
+    <!-- WPF owns startup and DPI awareness; WinForms is used only for tray/screen APIs. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="Assets\**\*" />
+    <EmbeddedResource Include="Web\**\*" />
+  </ItemGroup>
+</Project>

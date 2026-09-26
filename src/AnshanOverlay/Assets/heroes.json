@@ -1,0 +1,803 @@
+{
+  "source": "https://overwatch.blizzard.com/en-us/heroes/",
+  "retrievedAt": "2026-09-26T02:57:01.926253+00:00",
+  "count": 53,
+  "heroes": [
+    {
+      "id": "dmon",
+      "englishName": "D.Mon",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/a46c60b8562fdbd0b8308396d0808f7606fba208bc67cccf3f82fe56d2c73b9d.png",
+      "name": "D.Mon",
+      "aliases": "dmon D.Mon",
+      "image": "dmon.png",
+      "originalSha256": "a46c60b8562fdbd0b8308396d0808f7606fba208bc67cccf3f82fe56d2c73b9d",
+      "sha256": "45b60db31963aeba01bafaca90df7dd2703caf25ccd7d01d99da97b2de48ead2",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "ana",
+      "englishName": "Ana",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/985b06beae46b7ba3ca87d1512d0fc62ca7f206ceca58ef16fc44d43a1cc84ed.png",
+      "name": "安娜",
+      "aliases": "an anna an na 安娜",
+      "image": "ana.png",
+      "originalSha256": "985b06beae46b7ba3ca87d1512d0fc62ca7f206ceca58ef16fc44d43a1cc84ed",
+      "sha256": "041f5c137fc7437cb78d846c20f98f8be9554d2475a34bc8f725f90835a4fbef",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "anran",
+      "englishName": "Anran",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/2c38b41d79a1ce9a08b9ad8eb7edf3ff819bd448af16a5815be8c7fdb7203aa0.png",
+      "name": "安燃",
+      "aliases": "ar an ran 安燃",
+      "image": "anran.png",
+      "originalSha256": "2c38b41d79a1ce9a08b9ad8eb7edf3ff819bd448af16a5815be8c7fdb7203aa0",
+      "sha256": "8b5625063057663a50841a5f616067e2c498b6d5842f2a9325e3019cddddfada",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "ashe",
+      "englishName": "Ashe",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4076bbaa2eb52a0bfe612434071e56e7702d5454473dbbea2f9e392a9d997a94.png",
+      "name": "艾什",
+      "aliases": "as ai shi 艾什",
+      "image": "ashe.png",
+      "originalSha256": "4076bbaa2eb52a0bfe612434071e56e7702d5454473dbbea2f9e392a9d997a94",
+      "sha256": "c12aaa8e3da71a3ded41362c4fd5a726712d72faba68f4b4f53adc6c5380a059",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "baptiste",
+      "englishName": "Baptiste",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/d4e6f1ca45d9f88fa89260787397f141a6f007b14e5b26698883b6a17bab9680.png",
+      "name": "巴蒂斯特",
+      "aliases": "bdst ba di si te 巴蒂斯特",
+      "image": "baptiste.png",
+      "originalSha256": "d4e6f1ca45d9f88fa89260787397f141a6f007b14e5b26698883b6a17bab9680",
+      "sha256": "b8a126684a3522f13be656182c17710ca25ee5867f11c5ee38ffc46dc59070d8",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "bastion",
+      "englishName": "Bastion",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4ede795c2a681aaccfa72d0c901cba0cb8a2c292fd6a97b2ba9faed161c2d184.png",
+      "name": "堡垒",
+      "aliases": "bl bao lei 堡垒",
+      "image": "bastion.png",
+      "originalSha256": "4ede795c2a681aaccfa72d0c901cba0cb8a2c292fd6a97b2ba9faed161c2d184",
+      "sha256": "5edaeb198e36f949700f3a485702a2426a71a99da39c26d7ee0688e622e3851f",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "brigitte",
+      "englishName": "Brigitte",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/795fba91376d87d441a7f359ae12a3175dfa95825ccc4414cc6b95b129fc4cb0.png",
+      "name": "布丽吉塔",
+      "aliases": "bljt xiaochui 小锤 bu li ji ta 布丽吉塔",
+      "image": "brigitte.png",
+      "originalSha256": "795fba91376d87d441a7f359ae12a3175dfa95825ccc4414cc6b95b129fc4cb0",
+      "sha256": "1d6d9cba3623e5f1a981c72da23980c08652478f4d47b48e7fcc1b5ff0183c69",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "cassidy",
+      "englishName": "Cassidy",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/9240cd64cc8ef58df9acbf55204ab1b5d8578f743fda5931f0dbccbd75ab841b.png",
+      "name": "卡西迪",
+      "aliases": "kxd mkl 麦克雷 ka xi di 卡西迪",
+      "image": "cassidy.png",
+      "originalSha256": "9240cd64cc8ef58df9acbf55204ab1b5d8578f743fda5931f0dbccbd75ab841b",
+      "sha256": "9c23d9afc9a08a880e08c6efddd95e5a937b33ff7ebb8e3ba7385dbb1e4570d2",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "dva",
+      "englishName": "D.Va",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/df5a5532862d9292634fb3dc0e51a4705aa601de65e5e815513ccc663d84de56.png",
+      "name": "D.VA",
+      "aliases": "dva dva 宋哈娜 D.Va",
+      "image": "dva.png",
+      "originalSha256": "df5a5532862d9292634fb3dc0e51a4705aa601de65e5e815513ccc663d84de56",
+      "sha256": "28d10f61656b89a10513b385722488b2dfed91a32831a8c8e6cfbef741241ee9",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "domina",
+      "englishName": "Domina",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/1161c112292c56c052c0ae711792fcde06e3251b98bc9709e582dd7585b5dcd6.png",
+      "name": "金驭",
+      "aliases": "jy jin yu 金驭",
+      "image": "domina.png",
+      "originalSha256": "1161c112292c56c052c0ae711792fcde06e3251b98bc9709e582dd7585b5dcd6",
+      "sha256": "50ce9f2f94bf0683602bae9f5fcc77dfaa4570c6895f9b1b579b89a0bdc062d4",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "doomfist",
+      "englishName": "Doomfist",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ff5c54f43ad253c7faeda9c4ed31d42582ea6b19205d197866f3dd0c0aa14c16.png",
+      "name": "末日铁拳",
+      "aliases": "mrtq 铁拳 mo ri tie quan 末日铁拳",
+      "image": "doomfist.png",
+      "originalSha256": "ff5c54f43ad253c7faeda9c4ed31d42582ea6b19205d197866f3dd0c0aa14c16",
+      "sha256": "0fadcfab961bef46856cc10d56ef73ecd595d6c77f0ed81e0096a0b28c7b1c39",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "echo",
+      "englishName": "Echo",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/d4f2d5b0c2b7e82d61353186c5f23152ccba9d3569b50839aa580dca3e9114ba.png",
+      "name": "回声",
+      "aliases": "hs hui sheng 回声",
+      "image": "echo.png",
+      "originalSha256": "d4f2d5b0c2b7e82d61353186c5f23152ccba9d3569b50839aa580dca3e9114ba",
+      "sha256": "70a7710e094cd5a6390c6e4570b05b9e81da58e7689d36c9f7bf98cb241ad9fe",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "emre",
+      "englishName": "Emre",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/c51e2f698138861c0e3b6cfab3c3ca9d67fd709be175e7c397aa6f2649712a30.png",
+      "name": "埃姆雷",
+      "aliases": "aml ai mu lei 埃姆雷",
+      "image": "emre.png",
+      "originalSha256": "c51e2f698138861c0e3b6cfab3c3ca9d67fd709be175e7c397aa6f2649712a30",
+      "sha256": "78b4231a4747e47628ff892f5f7bf0234de37e2c9cde764006a5c4c29daef654",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "freja",
+      "englishName": "Freja",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/811963897c352d9f178bec882d94bd0281074feee7c429c5145b6b8ea8ebe862.png",
+      "name": "弗蕾娅",
+      "aliases": "fly fu lei ya 弗蕾娅",
+      "image": "freja.png",
+      "originalSha256": "811963897c352d9f178bec882d94bd0281074feee7c429c5145b6b8ea8ebe862",
+      "sha256": "9d5a77392ab6a16f9ed40db6e499cdd900eb3a5a055a0d9f214a77d48915fc3c",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "genji",
+      "englishName": "Genji",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/156b12c20b1aea872c1eeb5bb37a7de1047b2ab30ecefd0663a8925badde1ea8.png",
+      "name": "源氏",
+      "aliases": "ys yuan shi 源氏",
+      "image": "genji.png",
+      "originalSha256": "156b12c20b1aea872c1eeb5bb37a7de1047b2ab30ecefd0663a8925badde1ea8",
+      "sha256": "2cdd276a5041124e3b7f14c7b496d8629c83c4316e8a36c26f26e72d2e4e9973",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "hanzo",
+      "englishName": "Hanzo",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/78b61c3e806fb26b02b8980fba62189155074fc15bd865b0883268e546030be5.png",
+      "name": "半藏",
+      "aliases": "bz ban zang 半藏",
+      "image": "hanzo.png",
+      "originalSha256": "78b61c3e806fb26b02b8980fba62189155074fc15bd865b0883268e546030be5",
+      "sha256": "8975e0ff3f65da4b3cdd3e426a9378e2d77fbfd31ab79235400cd1aa611ad823",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "hazard",
+      "englishName": "Hazard",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ca48b96dbae6ea7f58ce8a5e73513c8c62b1685bdbf258020fb78bb21a008b5f.png",
+      "name": "骇灾",
+      "aliases": "hz hai zai 骇灾",
+      "image": "hazard.png",
+      "originalSha256": "ca48b96dbae6ea7f58ce8a5e73513c8c62b1685bdbf258020fb78bb21a008b5f",
+      "sha256": "7757dd4bfaae3253f7aa7d845e752b44e1c4e9694bbb58fcc5933d180492b9c4",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "illari",
+      "englishName": "Illari",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ce42d1455e03e79f321345fea84b27a8918b5db8bd7ab9b2ca9e569606ede9e4.png",
+      "name": "伊拉锐",
+      "aliases": "ylr yi la rui 伊拉锐",
+      "image": "illari.png",
+      "originalSha256": "ce42d1455e03e79f321345fea84b27a8918b5db8bd7ab9b2ca9e569606ede9e4",
+      "sha256": "b118452b510dc098726f4c4c7e4012efb640c744c1a42c8626cce9da5be659d2",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "jetpack-cat",
+      "englishName": "Jetpack Cat",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/03a184cd0de27091e0099ac22635ad9615a8f6997881a5c25cc5f2444764f729.png",
+      "name": "飞天猫",
+      "aliases": "ftm fei tian mao 飞天猫",
+      "image": "jetpack-cat.png",
+      "originalSha256": "03a184cd0de27091e0099ac22635ad9615a8f6997881a5c25cc5f2444764f729",
+      "sha256": "bba5d0bb04e0f9809bdc9c74a3d15105c6aa22f0cfcabd3e72e4b1f607ce200e",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "junker-queen",
+      "englishName": "Junker Queen",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/06eeecb359f311f43a8f5121d4f9f3a93c565d70b30e94ef543c05596c9a39dc.png",
+      "name": "渣客女王",
+      "aliases": "zknw 女王 zha ke nv wang 渣客女王",
+      "image": "junker-queen.png",
+      "originalSha256": "06eeecb359f311f43a8f5121d4f9f3a93c565d70b30e94ef543c05596c9a39dc",
+      "sha256": "4132c9b8a40b54f662d74cc6d93a96351a22514b22e5e4c3ca28ea301bc371cc",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "junkrat",
+      "englishName": "Junkrat",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/7660b9fc6f25f30858fdd8797fe0d52b2306f1e78fef99843f58a274e69af046.png",
+      "name": "狂鼠",
+      "aliases": "ks kuang shu 狂鼠",
+      "image": "junkrat.png",
+      "originalSha256": "7660b9fc6f25f30858fdd8797fe0d52b2306f1e78fef99843f58a274e69af046",
+      "sha256": "6049c523fd50e4e2c5b55102d6233140bd485bd9d8f2f0750495e9eba4cf2491",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "juno",
+      "englishName": "Juno",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/c0167d251e57b0aa2b1e16c37d87f0e7c77263db9dd0503d77b5f2589bf3e4a0.png",
+      "name": "朱诺",
+      "aliases": "zn zhu nuo 朱诺",
+      "image": "juno.png",
+      "originalSha256": "c0167d251e57b0aa2b1e16c37d87f0e7c77263db9dd0503d77b5f2589bf3e4a0",
+      "sha256": "40fda2bd1d6fa6334e7c013d14b5c9265e96a94af11097a2da225e3de26b4ecb",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "kiriko",
+      "englishName": "Kiriko",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/408603fe037e8576078eaac5eab2fb251489ced4003b11f5f522776d43d0b83d.png",
+      "name": "雾子",
+      "aliases": "wz wu zi 雾子",
+      "image": "kiriko.png",
+      "originalSha256": "408603fe037e8576078eaac5eab2fb251489ced4003b11f5f522776d43d0b83d",
+      "sha256": "38ee246298ebe5c7dc2433176076e1c180e3ed7a4c580fb9761a70cc33384abc",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "lifeweaver",
+      "englishName": "Lifeweaver",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/3376515cebed0904012e67e956f6d1b9c12e03da642845eeaf787b7e4c7b339d.png",
+      "name": "生命之梭",
+      "aliases": "smzs 织命 sheng ming zhi suo 生命之梭",
+      "image": "lifeweaver.png",
+      "originalSha256": "3376515cebed0904012e67e956f6d1b9c12e03da642845eeaf787b7e4c7b339d",
+      "sha256": "71ca966b82fd1a750c28ce18a76fe6f8add73fb55ed2cfbb9f451bb8c9fd6bc5",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "lucio",
+      "englishName": "Lúcio",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/040bb13f5123ab93faad2f95627ba184608aef4b2469a4d3003859c7087df044.png",
+      "name": "卢西奥",
+      "aliases": "lxa DJ lu xi ao 卢西奥",
+      "image": "lucio.png",
+      "originalSha256": "040bb13f5123ab93faad2f95627ba184608aef4b2469a4d3003859c7087df044",
+      "sha256": "d59c2aea5548c0b31e746e8a41f9ae8cb8fb1fdd36529da7d002afa44fc66654",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "mauga",
+      "englishName": "Mauga",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/33d39bb439c08975197fc52eff4874716839711b5356c4fdc174f9c24bac1d0e.png",
+      "name": "毛加",
+      "aliases": "mj mao jia 毛加",
+      "image": "mauga.png",
+      "originalSha256": "33d39bb439c08975197fc52eff4874716839711b5356c4fdc174f9c24bac1d0e",
+      "sha256": "8254f04449497d54188a8bb6a46e0190eaf58b3960cd91a8319f4bcb1852624a",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "mei",
+      "englishName": "Mei",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4a55ced3bd597fb08e0fde9dc007f8543ac616ba98ca3db9b0e4d871a8ae17f8.png",
+      "name": "美",
+      "aliases": "小美 xm mei 美",
+      "image": "mei.png",
+      "originalSha256": "4a55ced3bd597fb08e0fde9dc007f8543ac616ba98ca3db9b0e4d871a8ae17f8",
+      "sha256": "bd1c94fe60f7ce54f23dd386c5df89f775922c006ac8d7e857e8a1239e013621",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "mercy",
+      "englishName": "Mercy",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/3bfb8bd8ec827e53d870f1238ab73d8aa1f5dbfbcfaaf7f96ffcd35b5c6102ab.png",
+      "name": "天使",
+      "aliases": "ts tian shi 天使",
+      "image": "mercy.png",
+      "originalSha256": "3bfb8bd8ec827e53d870f1238ab73d8aa1f5dbfbcfaaf7f96ffcd35b5c6102ab",
+      "sha256": "55eb00f8630ef226b061d5655abb0475f333d3eb33aae78f65cbd81585fadabd",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "mizuki",
+      "englishName": "Mizuki",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/a9733c2367e0cbd70b9316fd2e1e17028653ec56d0051ea6ff098531dc4f99fc.png",
+      "name": "瑞稀",
+      "aliases": "rx rui xi 瑞希",
+      "image": "mizuki.png",
+      "originalSha256": "a9733c2367e0cbd70b9316fd2e1e17028653ec56d0051ea6ff098531dc4f99fc",
+      "sha256": "ade834711b07e37f3534f4d4185bb11fd40fa9ed33b6c00c423cc861bf7d6f25",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "moira",
+      "englishName": "Moira",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/f48f8485056d5d00dad195859188d23e50f7126b8b08b5646f46ef1b42f5e1de.png",
+      "name": "莫伊拉",
+      "aliases": "myl mo yi la 莫伊拉",
+      "image": "moira.png",
+      "originalSha256": "f48f8485056d5d00dad195859188d23e50f7126b8b08b5646f46ef1b42f5e1de",
+      "sha256": "089d26a77a7ddbe7cf110f9cd5b0b69efd28918ee24d8633bd631c2b7deabaa2",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "orisa",
+      "englishName": "Orisa",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/a73958a28551f5254f3ab3f97c5f5f8d698a95c0b6a515d1a2b1caac169205a6.png",
+      "name": "奥丽莎",
+      "aliases": "als ao li sha 奥丽莎",
+      "image": "orisa.png",
+      "originalSha256": "a73958a28551f5254f3ab3f97c5f5f8d698a95c0b6a515d1a2b1caac169205a6",
+      "sha256": "b0243304b2979dc819dc9ac65875d8dba1928a89442472bd517cdf618eb0c802",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "pharah",
+      "englishName": "Pharah",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/60ac2d5de4a6d34644d8872233da402f1436c87f804bb11a21661bb30bf4a51f.png",
+      "name": "法老之鹰",
+      "aliases": "flzy 法鸡 fa lao zhi ying 法老之鹰",
+      "image": "pharah.png",
+      "originalSha256": "60ac2d5de4a6d34644d8872233da402f1436c87f804bb11a21661bb30bf4a51f",
+      "sha256": "835e7a7083518efef1f1ca278e444b9ec7faf89b9521cd6ec1c16716fabf5966",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "ramattra",
+      "englishName": "Ramattra",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ddef7c9fb8ce4256e8508196b486f81950efe7aaa6cf27fec4668beb4cd15774.png",
+      "name": "拉玛刹",
+      "aliases": "lmc la ma cha 拉玛刹",
+      "image": "ramattra.png",
+      "originalSha256": "ddef7c9fb8ce4256e8508196b486f81950efe7aaa6cf27fec4668beb4cd15774",
+      "sha256": "d384aae082e44747f94bafc6b140e33587cb97007362be27daac3a1e9fc960dc",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "reaper",
+      "englishName": "Reaper",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/dc6ff07ac790c00dc95a40882449617bb6e0e38906b353a630cffe0c815270a9.png",
+      "name": "死神",
+      "aliases": "ss si shen 死神",
+      "image": "reaper.png",
+      "originalSha256": "dc6ff07ac790c00dc95a40882449617bb6e0e38906b353a630cffe0c815270a9",
+      "sha256": "2322f047e228f50168e6f17ddeffe4ef1a89c50f18f53184a01bf4a89ddba58c",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "reinhardt",
+      "englishName": "Reinhardt",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/551fbe070c16fdfcc17f7f1de63af22c53e7d2f1340fc2f3172441504527bc4e.png",
+      "name": "莱因哈特",
+      "aliases": "lyht 大锤 lai yin ha te 莱因哈特",
+      "image": "reinhardt.png",
+      "originalSha256": "551fbe070c16fdfcc17f7f1de63af22c53e7d2f1340fc2f3172441504527bc4e",
+      "sha256": "92b5d169f604dbfcd5b1953f641e79c743dd7cc1310abbcef2ac4f0214ed17b3",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "roadhog",
+      "englishName": "Roadhog",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/89ddf07e4b619ed96169042e296a1b8856d102746f35add88284b44a9a5a6a03.png",
+      "name": "路霸",
+      "aliases": "lb 猪 lu ba 路霸",
+      "image": "roadhog.png",
+      "originalSha256": "89ddf07e4b619ed96169042e296a1b8856d102746f35add88284b44a9a5a6a03",
+      "sha256": "51bdeb76df14341c804ed6909da3d55a1c1780179463c3c91f6929d9fbafd86a",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "shion",
+      "englishName": "Shion",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/070481cf871590a2b45a51d1335f9fe3d65eb4e4d361ecdd998b34fae2ed65d5.png",
+      "name": "死怨",
+      "aliases": "sy si yuan 死怨",
+      "image": "shion.png",
+      "originalSha256": "070481cf871590a2b45a51d1335f9fe3d65eb4e4d361ecdd998b34fae2ed65d5",
+      "sha256": "8285b344cfecffce300d1bba9a9c9e289431102f13bc9fcf7c83fbc389ce8016",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "sierra",
+      "englishName": "Sierra",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4bfd3d8b95844231115cb5bf4db03344c71bc3e865189c52403b2dc51438e63a.png",
+      "name": "西拉",
+      "aliases": "xl xi la 西拉",
+      "image": "sierra.png",
+      "originalSha256": "4bfd3d8b95844231115cb5bf4db03344c71bc3e865189c52403b2dc51438e63a",
+      "sha256": "b3145f4da8c1b217bdf6c0f1cd557e9846f81e1f0a4c73200aa4cfa32d857c92",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "sigma",
+      "englishName": "Sigma",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/a4c032fa466c9a6d9c6974747635d7ef910027f91cd58892af0c899db565f92d.png",
+      "name": "西格玛",
+      "aliases": "xgm xi ge ma 西格玛",
+      "image": "sigma.png",
+      "originalSha256": "a4c032fa466c9a6d9c6974747635d7ef910027f91cd58892af0c899db565f92d",
+      "sha256": "811d204871a4bcb5b9d8035103f3fff624803b87309d1d263c59d5bf25a38da2",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "sojourn",
+      "englishName": "Sojourn",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/82b8c1b8765dcb9a0ba16e343c3516bf324c771ac81e9878473280216e70a889.png",
+      "name": "索杰恩",
+      "aliases": "sje suo jie en 索杰恩",
+      "image": "sojourn.png",
+      "originalSha256": "82b8c1b8765dcb9a0ba16e343c3516bf324c771ac81e9878473280216e70a889",
+      "sha256": "24d0f07382030e41519c53085d2151d91b66bff29a66c045d039fc43575982c4",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "soldier-76",
+      "englishName": "Soldier: 76",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/c93b5f0a528c40473188f77cc2a267aee7d5b6cf5c9e104105d634b4388674e2.png",
+      "name": "士兵：76",
+      "aliases": "sb76 76 shi bing 士兵：76",
+      "image": "soldier-76.png",
+      "originalSha256": "c93b5f0a528c40473188f77cc2a267aee7d5b6cf5c9e104105d634b4388674e2",
+      "sha256": "06cbbdda66394bb10af87172489bd645851b467f36ce6702fdb5104c74dfbd1d",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "sombra",
+      "englishName": "Sombra",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/47727b02a16e3bd7b2447d86ae1edf11587bc320b2aecb4f2f16a7ca4ad4e8a0.png",
+      "name": "黑影",
+      "aliases": "hy hei ying 黑影",
+      "image": "sombra.png",
+      "originalSha256": "47727b02a16e3bd7b2447d86ae1edf11587bc320b2aecb4f2f16a7ca4ad4e8a0",
+      "sha256": "4574be4f98949e0b9aed64bbf3bc1dd2dcdc970e32fdf3441d5c01e4b4a6df13",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "symmetra",
+      "englishName": "Symmetra",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ebec57e8bd68b3d4383edfeb34f8f52dd0b94a6467d594c2fee722e8a97c32aa.png",
+      "name": "秩序之光",
+      "aliases": "zxzg 三妹 zhi xu zhi guang 秩序之光",
+      "image": "symmetra.png",
+      "originalSha256": "ebec57e8bd68b3d4383edfeb34f8f52dd0b94a6467d594c2fee722e8a97c32aa",
+      "sha256": "80288c367c925b0adec152c73226ee11ca9e63b42c49bf3b427d933424e0bc93",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "torbjorn",
+      "englishName": "Torbjörn",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/ce17118cedc29b0d2ac1e059666bed36b9531c85079b0b894bb402d12c917ba9.png",
+      "name": "托比昂",
+      "aliases": "tba tuo bi ang 托比昂",
+      "image": "torbjorn.png",
+      "originalSha256": "ce17118cedc29b0d2ac1e059666bed36b9531c85079b0b894bb402d12c917ba9",
+      "sha256": "e05c4945934b3d98dc45638b8b89a375bf5ce23926664c92d8f5820d62e01e7a",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "tracer",
+      "englishName": "Tracer",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4504f6f15cb3feaa92ecd38e01dcf751cb5abdac2e0bb52d0555727e53277502.png",
+      "name": "猎空",
+      "aliases": "lk lie kong 猎空",
+      "image": "tracer.png",
+      "originalSha256": "4504f6f15cb3feaa92ecd38e01dcf751cb5abdac2e0bb52d0555727e53277502",
+      "sha256": "14c21d0aee7353a8c498f1def4f0e2778281982ab8aba0cc714c98e4c4de269b",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "vendetta",
+      "englishName": "Vendetta",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/cf8ffb52b6f315546d5e94e9d6defad5a2c570798776956de23f47536f9529da.png",
+      "name": "斩仇",
+      "aliases": "zc zhan chou 斩仇",
+      "image": "vendetta.png",
+      "originalSha256": "cf8ffb52b6f315546d5e94e9d6defad5a2c570798776956de23f47536f9529da",
+      "sha256": "3a20041bcdaa09b7f3a6db8d20c1f209cba05107e7f9566bb90672b4a4d21b3e",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "venture",
+      "englishName": "Venture",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/dcab9123f5f55df22e54d4e797de43c71b917e0149dd059a7fd6136f48464cd0.png",
+      "name": "探奇",
+      "aliases": "tq tan qi 探奇",
+      "image": "venture.png",
+      "originalSha256": "dcab9123f5f55df22e54d4e797de43c71b917e0149dd059a7fd6136f48464cd0",
+      "sha256": "f342c198c10caffc29815f400387134ccb1721e52b67ccd73c23015c67abc908",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "widowmaker",
+      "englishName": "Widowmaker",
+      "role": "damage",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/6e4702b45f196aaf51555cf57327322721f45458b17f5f0643ed008a88378259.png",
+      "name": "黑百合",
+      "aliases": "hbh hei bai he 黑百合",
+      "image": "widowmaker.png",
+      "originalSha256": "6e4702b45f196aaf51555cf57327322721f45458b17f5f0643ed008a88378259",
+      "sha256": "f793c2c5eccd9a1c64d39cdef25dad45d8812cd9eaf83d7fcf54fe3f1f69fed9",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "winston",
+      "englishName": "Winston",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/46a10db3aa908c590ddc4e7606376a88143d1f1306ecfbea043263040f9529a5.png",
+      "name": "温斯顿",
+      "aliases": "wsd 猩猩 wen si dun 温斯顿",
+      "image": "winston.png",
+      "originalSha256": "46a10db3aa908c590ddc4e7606376a88143d1f1306ecfbea043263040f9529a5",
+      "sha256": "023b6e654893165d1f292c00e3be0f56ece0c8a48f4ea77c8dbad1137e6a50fd",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "wrecking-ball",
+      "englishName": "Wrecking Ball",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/9ef1d58867136e0b26f928d896000b9dab216118f6e2f59e53f2e975e1e27afa.png",
+      "name": "破坏球",
+      "aliases": "phq 仓鼠 po huai qiu 破坏球",
+      "image": "wrecking-ball.png",
+      "originalSha256": "9ef1d58867136e0b26f928d896000b9dab216118f6e2f59e53f2e975e1e27afa",
+      "sha256": "f96619b897cbe487cfb6c0f9c20c0bd2b542d2a0cfa41f39aa996eb0204116e8",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "wuyang",
+      "englishName": "Wuyang",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/4959500b495b35c0908be2abda56b53f2601b2c5cc39a1cfde8df1bffd38d66d.png",
+      "name": "无漾",
+      "aliases": "wy wu yang 无漾",
+      "image": "wuyang.png",
+      "originalSha256": "4959500b495b35c0908be2abda56b53f2601b2c5cc39a1cfde8df1bffd38d66d",
+      "sha256": "99a2a0ad5bc95a93da0cdf207d44ac681b1c9fe97aa0ba1accc2a81a229a5b0a",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "zarya",
+      "englishName": "Zarya",
+      "role": "tank",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/9b6f63cc66ddf9d5e0862173c733cc0d2e574c5c89357798d91b93b2f95a7080.png",
+      "name": "查莉娅",
+      "aliases": "cly 毛妹 cha li ya 查莉娅",
+      "image": "zarya.png",
+      "originalSha256": "9b6f63cc66ddf9d5e0862173c733cc0d2e574c5c89357798d91b93b2f95a7080",
+      "sha256": "16ef1a025cb53d110f1583dac1abac04050ae3881cc654ab8495dccf07e8b3b6",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "zenyatta",
+      "englishName": "Zenyatta",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/7d1546b1541a8afc39353f9337a408d6275a141b0432b7e560ef61579996b0fc.png",
+      "name": "禅雅塔",
+      "aliases": "cyt 和尚 chan ya ta 禅雅塔",
+      "image": "zenyatta.png",
+      "originalSha256": "7d1546b1541a8afc39353f9337a408d6275a141b0432b7e560ef61579996b0fc",
+      "sha256": "92193986add42491753eda7d140606ee4235907fff180f43898189a497de0228",
+      "originalSize": [
+        256,
+        256
+      ]
+    }
+  ],
+  "nameSource": "https://ld5.res.netease.com/pc/zt/20241115153332/static/heroConfigs.json"
+}

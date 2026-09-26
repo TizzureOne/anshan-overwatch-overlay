@@ -1,0 +1,104 @@
+<Window x:Class="AnshanOverlay.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="安山守望 · 教学标注" Width="474" Height="900"
+ MinWidth="340" MinHeight="420" ResizeMode="CanResizeWithGrip" WindowStyle="None" Topmost="True" WindowStartupLocation="CenterScreen"
+ Style="{StaticResource {x:Type Window}}" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Grayscale">
+ <WindowChrome.WindowChrome><WindowChrome CaptionHeight="0" ResizeBorderThickness="8" GlassFrameThickness="0" CornerRadius="0"/></WindowChrome.WindowChrome>
+ <Window.Resources>
+  <Style x:Key="RoleButton" TargetType="RadioButton">
+   <Setter Property="Foreground" Value="#27374A"/><Setter Property="Background" Value="#E5EAF0"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
+    <Border x:Name="Shell" Background="{TemplateBinding Background}" BorderBrush="#C5CFDB" BorderThickness="1" Padding="8" Margin="0,0,4,0">
+     <ContentPresenter HorizontalAlignment="Center"/>
+    </Border>
+    <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="#27374A"/><Setter TargetName="Shell" Property="BorderBrush" Value="#FF9C27"/><Setter TargetName="Shell" Property="Background" Value="#FF9C27"/></Trigger></ControlTemplate.Triggers>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
+ </Window.Resources>
+ <Grid Background="#F4F6F9">
+ <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1" Padding="18,14">
+  <Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" FontSize="11" Height="28" Padding="7,4" Margin="0,33,0,0" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+ </Border>
+ <Border x:Name="ExpandedPanel" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1"><Grid Margin="18,14,18,14">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Border Height="63"/>
+  <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="2" Padding="12" Margin="0,0,0,12">
+   <StackPanel>
+    <Button x:Name="ModeButton" Click="ModeClick" Padding="12,10" HorizontalContentAlignment="Stretch" Background="#FF9C27" BorderBrush="#FF9C27"><TextBlock x:Name="ModeText" FontWeight="Bold" FontSize="15"/></Button>
+    <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
+     <Button x:Name="TopmostButton" Click="TopmostClick" Margin="0,0,5,0" FontSize="12"/>
+     <Button x:Name="VisibleButton" Grid.Column="1" Click="VisibleClick" Margin="5,0,0,0" FontSize="12"/>
+    </Grid>
+   </StackPanel>
+  </Border>
+  <TabControl Grid.Row="3" Background="Transparent" BorderThickness="0" Padding="0,12,0,0">
+   <TabItem Header="英雄库">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+     <Grid><TextBox x:Name="SearchBox" TextChanged="SearchChanged" ToolTip="中文名、英文名、拼音首字母、常用别名"/>
+      <TextBlock Text="搜索英雄 / 名称 / 英文" Margin="11,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False">
+       <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+      </TextBlock>
+     </Grid>
+     <UniformGrid Grid.Row="1" Columns="3" Margin="0,10,0,8">
+      <RadioButton Content="重装" Tag="tank" GroupName="HeroRole" IsChecked="True" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
+      <RadioButton Content="输出" Tag="damage" GroupName="HeroRole" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
+      <RadioButton Content="支援" Tag="support" GroupName="HeroRole" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
+     </UniformGrid>
+     <TextBlock x:Name="SearchHint" Grid.Row="2" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,8"/>
+     <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+       <ItemsControl.ItemTemplate><DataTemplate>
+        <Button Click="HeroClick" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="84" Tag="{Binding}" Margin="2,2,4,5" Padding="3,9" Background="#E5EAF0" BorderBrush="#C5CFDB" ToolTip="{Binding EnglishName}">
+         <StackPanel><Image Source="{Binding Portrait}" Width="58" Height="58" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" MaxWidth="86"/></StackPanel>
+        </Button>
+       </DataTemplate></ItemsControl.ItemTemplate>
+      </ItemsControl>
+     </ScrollViewer>
+    </Grid>
+   </TabItem>
+   <TabItem Header="场景设置">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+     <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,0,0,16"/>
+     <TextBlock Text="场景操作" FontWeight="Bold" Margin="0,0,0,10"/>
+     <UniformGrid Columns="2"><Button x:Name="UndoButton" Content="撤销" Click="UndoClick" Margin="0,0,5,7"/><Button x:Name="RedoButton" Content="重做" Click="RedoClick" Margin="5,0,0,7"/><Button Content="复制选中" Click="DuplicateClick" Margin="0,0,5,7"/><Button Content="删除选中" Click="DeleteClick" Margin="5,0,0,7"/><Button Content="清除标注" Click="ClearLinesClick" Margin="0,0,5,7"/><Button Content="清空全部" Click="ClearAllClick" Margin="5,0,0,7"/></UniformGrid>
+     <TextBlock Text="清空可撤销。头像选中后，滚轮可直接调整大小。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,16"/>
+     <UniformGrid Columns="2"><Button Content="保存场景…" Click="SaveClick" Margin="0,0,5,0"/><Button Content="加载场景…" Click="LoadClick" Margin="5,0,0,0"/></UniformGrid>
+     <TextBlock Text="当前场景自动保存在本机，下次启动可继续。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,9,0,18"/>
+     <TextBlock Text="教学屏幕" FontWeight="Bold" Margin="0,0,0,10"/>
+     <ComboBox x:Name="ScreenBox" SelectionChanged="ScreenChanged" Foreground="#162331" Padding="6"/>
+    </StackPanel></ScrollViewer>
+   </TabItem>
+   <TabItem Header="OBS / 帮助">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+     <TextBlock Text="透明标注，独立输出" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+     <TextBlock Text="在 OBS 添加「浏览器」源，将下方地址粘贴到 URL，并放在游戏或视频源上方。" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12"/>
+     <TextBox x:Name="ObsUrl" IsReadOnly="True" FontFamily="Consolas" FontSize="12"/>
+     <Button Content="复制 OBS 地址" Click="CopyObsClick" Margin="0,8,0,10"/>
+     <TextBlock x:Name="ObsSize" Foreground="#B76B13" FontWeight="Bold" Margin="0,0,0,8"/>
+     <TextBlock Text="浏览器源与游戏源需保持相同的位置、缩放和裁剪。工具栏、选择框与提示不会进入此输出。" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,10"/>
+     <TextBlock Text="如果使用 OBS「显示器捕获」，桌面标注可能已被录入，此时不要重复叠加浏览器源。" Foreground="#98611D" Margin="0,0,0,16"/>
+     <TextBlock Text="全局快捷键" FontWeight="Bold" Margin="0,0,0,8"/>
+     <TextBlock x:Name="HotkeyWarningText" Foreground="#98611D" FontSize="11"/>
+     <TextBlock x:Name="ShortcutHelp" LineHeight="23" Foreground="{StaticResource MutedBrush}"/>
+     <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,10,0,10"/>
+     <TextBlock Text="从列表拖出英雄可直接放置。移动工具选择标注后可编辑样式。Shift 约束方向或比例；右键英雄调整阵营与尺寸。" Foreground="{StaticResource MutedBrush}"/>
+     <TextBlock Text="建议使用窗口化或无边框模式。独占全屏覆盖需实机确认。素材均内置，日常使用无需联网。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,18,0,0"/>
+     <TextBlock x:Name="SourceInfo" Foreground="#67768A" FontSize="10" Margin="0,12,0,0"/>
+    </StackPanel></ScrollViewer>
+   </TabItem>
+  </TabControl>
+  <Border Grid.Row="4" BorderBrush="#C5CFDB" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,12,0,0">
+   <StackPanel><TextBlock x:Name="StatusText" Foreground="{StaticResource MutedBrush}" FontSize="11" MinHeight="32"/><Grid Margin="0,8,0,0"><TextBlock x:Name="ObjectCount" Foreground="#67768A" FontSize="10" VerticalAlignment="Center"/><Button HorizontalAlignment="Right" Content="折叠面板" Click="FoldClick" FontSize="11" Padding="8,4"/></Grid></StackPanel>
+  </Border>
+ </Grid></Border>
+ <Grid Margin="19,18,19,0" Height="46" VerticalAlignment="Top">
+  <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+  <Border Width="5" Background="#FF9C27" HorizontalAlignment="Left"/>
+  <StackPanel Margin="16,0,8,0"><TextBlock Text="安山守望" FontSize="22" FontWeight="ExtraBold" FontStyle="Italic" TextWrapping="NoWrap"/><TextBlock Text="TACTICAL / TEACHING OVERLAY" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="1,5,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/></StackPanel>
+  <StackPanel x:Name="WindowActions" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+   <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
+   <Button x:Name="ClosePanelButton" ToolTip="关闭面板 · 画布与工具栏继续运行" AutomationProperties.Name="关闭面板" Click="CloseClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
+   <Button x:Name="ExitButton" ToolTip="退出程序" AutomationProperties.Name="退出程序" Click="ExitClick" Width="27" Height="25" Padding="0"><Path Data="M 7,0 L 7,7 M 3,3 A 6,6 0 1 0 11,3" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
+  </StackPanel>
+ </Grid>
+ </Grid>
+</Window>

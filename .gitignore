@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+dist/
+artifacts/
+tools/heroes-*.html
+tools/heroes-cn.js
+tools/heroes-cn-data.json
+tools/dotnet-release.json
+tools/originals/
+.vs/
