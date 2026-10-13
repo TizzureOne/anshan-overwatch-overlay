@@ -163,25 +163,58 @@ public sealed class Editor
     public bool Dashed { get => Store.Current.DrawingDashed; set => Store.Edit(s => s with { DrawingDashed = value }); }
     public double Size { get => Settings[EditorTool.Hero].Size; set => Settings[EditorTool.Hero].Size = value; }
     public string Team { get => Settings[EditorTool.Hero].Team; set => Settings[EditorTool.Hero].Team = value; }
-    public string? SelectedId { get; set; }
+    private readonly HashSet<string> selection = new();
+    public IReadOnlySet<string> SelectedIds => selection;
+    public string? SelectedId
+    {
+        get => selection.Count == 1 ? selection.First() : null;
+        set { selection.Clear(); if (value is not null) selection.Add(value); }
+    }
+    public SceneItem[] SelectedItems => Store.Current.Items.Where(i => selection.Contains(i.Id)).ToArray();
+    public void Select(IEnumerable<string> ids) { selection.Clear(); selection.UnionWith(ids); }
+    public Rect? SelectionBox { get; private set; }
     public bool IsDragging => before is not null;
+    public bool IsMoving => before is not null && original is not null && (!selecting || !extendSelection && selectionMoved);
     private Scene? before;
     private SceneItem? original;
     private Point origin;
     private int endpoint;
+    private HashSet<string>? selectionBefore;
+    private bool selecting;
+    private bool extendSelection;
+    private bool selectionMoved;
     private bool erasing;
     private Point lastErase;
     public double EraserSize { get; set; } = 28;
     public bool EraseWhole { get; set; }
-    public Editor(SceneStore store) => Store = store;
+    public Editor(SceneStore store)
+    {
+        Store = store;
+        Store.Changed += () => selection.IntersectWith(Store.Current.Items.Select(i => i.Id));
+    }
     public SceneItem? Selected => Store.Current.Items.FirstOrDefault(i => i.Id == SelectedId);
-    public void Down(Point point)
+    public void Down(Point point, bool extend = false)
     {
         Cancel();
         point = Clamp(point); origin = point;
         before = Store.Current; endpoint = 0;
+        if (Tool == EditorTool.Move)
+        {
+            selecting = true; extendSelection = extend; selectionBefore = new(selection);
+            original = Store.Current.Items.AsEnumerable().Reverse().FirstOrDefault(i => Hit(i, point));
+            if (original is null) { if (!extend) SelectedId = null; return; }
+            if (extend)
+            {
+                if (!selection.Add(original.Id)) selection.Remove(original.Id);
+                return;
+            }
+            if (!selection.Contains(original.Id)) SelectedId = original.Id;
+            if (selection.Count == 1 && original.Kind == "line" && original.Erasures.Count == 0)
+                endpoint = (point - original.Start).Length < 14 ? 1 : (point - original.End).Length < 14 ? 2 : 0;
+            return;
+        }
         // Heroes remain directly draggable with every active tool.
-        original = Tool == EditorTool.Move ? null : Store.Current.Items.AsEnumerable().Reverse().FirstOrDefault(i => i.Kind == "hero" && Hit(i, point));
+        original = Store.Current.Items.AsEnumerable().Reverse().FirstOrDefault(i => i.Kind == "hero" && Hit(i, point));
         if (original is not null) { SelectedId = original.Id; return; }
         SelectedId = null;
         if (Tool == EditorTool.Eraser) { erasing = true; lastErase = point; Erase(point); return; }
@@ -214,6 +247,24 @@ public sealed class Editor
     {
         if (before is null) return;
         point = Clamp(point);
+        if (selecting)
+        {
+            var distance = point - origin;
+            if (!selectionMoved && Math.Abs(distance.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(distance.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            selectionMoved = true;
+            if (original is null || extendSelection)
+            {
+                SelectionBox = new Rect(origin, point);
+                selection.Clear();
+                if (extendSelection) selection.UnionWith(selectionBefore!);
+                foreach (var item in before.Items)
+                {
+                    var bounds = SelectionBounds(item);
+                    if (!bounds.IsEmpty && SelectionBox.Value.Contains(bounds)) selection.Add(item.Id);
+                }
+                return;
+            }
+        }
         if (erasing) { Erase(point); return; }
         if (original is null) return;
         SceneItem next;
@@ -244,21 +295,15 @@ public sealed class Editor
         }
         else
         {
+            var moving = selecting ? before.Items.Where(i => selection.Contains(i.Id)).ToArray() : new[] { original };
+            var bounds = Rect.Empty;
+            foreach (var item in moving) bounds.Union(MovementBounds(item));
             var delta = point - origin;
-            double minX = original.Kind == "hero" ? original.X - original.Size / 2 : Math.Min(original.X, original.X2);
-            double maxX = original.Kind == "hero" ? original.X + original.Size / 2 : Math.Max(original.X, original.X2);
-            double minY = original.Kind == "hero" ? original.Y - original.Size / 2 : Math.Min(original.Y, original.Y2);
-            double maxY = original.Kind == "hero" ? original.Y + original.Size / 2 : Math.Max(original.Y, original.Y2);
-            if (original.Kind == "path" && original.Points.Count > 0)
-            {
-                minX = original.Points.Min(p => p.X); maxX = original.Points.Max(p => p.X);
-                minY = original.Points.Min(p => p.Y); maxY = original.Points.Max(p => p.Y);
-            }
-            delta.X = Math.Clamp(delta.X, -Math.Max(0, minX), Math.Max(0, Store.Current.Width - maxX));
-            delta.Y = Math.Clamp(delta.Y, -Math.Max(0, minY), Math.Max(0, Store.Current.Height - maxY));
-            next = original with { X = original.X + delta.X, Y = original.Y + delta.Y, X2 = original.X2 + delta.X, Y2 = original.Y2 + delta.Y,
-                Points = original.Points.Select(p => new InkPoint(p.X + delta.X, p.Y + delta.Y)).ToList(),
-                Erasures = original.Erasures.Select(e => e with { X = e.X + delta.X, Y = e.Y + delta.Y, X2 = e.X2 + delta.X, Y2 = e.Y2 + delta.Y }).ToList() };
+            delta.X = Math.Clamp(delta.X, -Math.Max(0, bounds.Left), Math.Max(0, Store.Current.Width - bounds.Right));
+            delta.Y = Math.Clamp(delta.Y, -Math.Max(0, bounds.Top), Math.Max(0, Store.Current.Height - bounds.Bottom));
+            var ids = moving.Select(i => i.Id).ToHashSet();
+            Store.Preview(before with { Items = before.Items.Select(i => ids.Contains(i.Id) ? Translate(i, delta) : i).ToList() });
+            return;
         }
         Store.Replace(next);
     }
@@ -266,11 +311,18 @@ public sealed class Editor
     {
         if (before is null) return;
         var saved = before; before = null;
-        if (!erasing && Selected is { } i && ((i.Kind == "line" && (i.End - i.Start).Length < 4) || (i.Kind is "circle" or "rectangle" && (Math.Abs(i.X2 - i.X) < 3 || Math.Abs(i.Y2 - i.Y) < 3)) || (i.Kind == "path" && i.Points.Count < 2))) Store.Preview(saved);
+        if (selecting && !selectionMoved && !extendSelection && original is not null) SelectedId = original.Id;
+        SelectionBox = null;
+        if ((!selecting || endpoint != 0) && !erasing && Selected is { } i && ((i.Kind == "line" && (i.End - i.Start).Length < 4) || (i.Kind is "circle" or "rectangle" && (Math.Abs(i.X2 - i.X) < 3 || Math.Abs(i.Y2 - i.Y) < 3)) || (i.Kind == "path" && i.Points.Count < 2))) Store.Preview(saved);
         else Store.Commit(saved);
-        original = null; erasing = false;
+        original = null; erasing = selecting = selectionMoved = false; selectionBefore = null;
     }
-    public void Cancel() { if (before is not null) { var s = before; before = null; Store.Preview(s); } original = null; erasing = false; }
+    public void Cancel()
+    {
+        if (selectionBefore is not null) { selection.Clear(); selection.UnionWith(selectionBefore); }
+        SelectionBox = null; original = null; erasing = selecting = selectionMoved = false; selectionBefore = null;
+        if (before is not null) { var s = before; before = null; Store.Preview(s); }
+    }
     public void ResizeSelected(int direction)
     {
         if (Selected is not { Kind: "hero" } item) return;
@@ -278,11 +330,32 @@ public sealed class Editor
     }
     public void Duplicate()
     {
-        if (Selected is not { } item) return;
-        var copy = item with { Id = Guid.NewGuid().ToString("N"), X = item.X + 24, Y = item.Y + 24, X2 = item.X2 + 24, Y2 = item.Y2 + 24,
-            Points = item.Points.Select(p => new InkPoint(p.X + 24, p.Y + 24)).ToList(),
-            Erasures = item.Erasures.Select(e => e with { X = e.X + 24, Y = e.Y + 24, X2 = e.X2 + 24, Y2 = e.Y2 + 24 }).ToList() };
-        Store.Edit(s => s with { Items = s.Items.Append(copy).ToList() }); SelectedId = copy.Id;
+        Cancel();
+        var copies = SelectedItems.Select(i => Translate(i, new Vector(24, 24)) with { Id = Guid.NewGuid().ToString("N") }).ToList();
+        if (copies.Count == 0) return;
+        selection.Clear(); selection.UnionWith(copies.Select(i => i.Id));
+        Store.Edit(s => s with { Items = s.Items.Concat(copies).ToList() });
+    }
+    public void Delete()
+    {
+        Cancel(); var ids = new HashSet<string>(selection);
+        Store.Edit(s => s with { Items = s.Items.Where(i => !ids.Contains(i.Id)).ToList() });
+    }
+    private static SceneItem Translate(SceneItem item, Vector delta) => item with {
+        X = item.X + delta.X, Y = item.Y + delta.Y, X2 = item.X2 + delta.X, Y2 = item.Y2 + delta.Y,
+        Points = item.Points.Select(p => new InkPoint(p.X + delta.X, p.Y + delta.Y)).ToList(),
+        Erasures = item.Erasures.Select(e => e with { X = e.X + delta.X, Y = e.Y + delta.Y, X2 = e.X2 + delta.X, Y2 = e.Y2 + delta.Y }).ToList() };
+    private static Rect MovementBounds(SceneItem item)
+    {
+        if (item.Kind == "hero") return new Rect(item.X - item.Size / 2, item.Y - item.Size / 2, item.Size, item.Size);
+        if (item.Kind == "path" && item.Points.Count > 0)
+            return new Rect(new Point(item.Points.Min(p => p.X), item.Points.Min(p => p.Y)), new Point(item.Points.Max(p => p.X), item.Points.Max(p => p.Y)));
+        return new Rect(item.Start, item.End);
+    }
+    public static Rect SelectionBounds(SceneItem item)
+    {
+        if (item.Kind == "hero") { var bounds = MovementBounds(item); bounds.Inflate(1.5, 1.5); return bounds; }
+        return Ink(item).Bounds;
     }
     private Point Clamp(Point p) => new(Math.Clamp(p.X, 0, Store.Current.Width), Math.Clamp(p.Y, 0, Store.Current.Height));
     private void Erase(Point point)
@@ -294,10 +367,7 @@ public sealed class Editor
         foreach (var item in Store.Current.Items)
         {
             if (item.Kind == "hero") { items.Add(item); continue; }
-            var outline = Outline(item);
-            Geometry ink = outline.GetWidenedPathGeometry(new Pen(Brushes.Black, item.Width) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round });
-            if (item.Arrow) ink = Geometry.Combine(ink, outline, GeometryCombineMode.Union, null);
-            if (item.Erasures.Count > 0) ink = Geometry.Combine(ink, ErasedArea(item), GeometryCombineMode.Exclude, null);
+            var ink = Ink(item);
             if (ink.FillContainsWithDetail(sweep) == IntersectionDetail.Empty) { items.Add(item); continue; }
             if (!EraseWhole && item.Erasures.Count >= 20000) { items.Add(item); continue; }
             changed = true;
@@ -305,6 +375,14 @@ public sealed class Editor
         }
         if (changed) Store.Preview(Store.Current with { Items = items });
         lastErase = point;
+    }
+    private static Geometry Ink(SceneItem item)
+    {
+        var outline = Outline(item);
+        Geometry ink = outline.GetWidenedPathGeometry(new Pen(Brushes.Black, item.Width) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round });
+        if (item.Arrow) ink = Geometry.Combine(ink, outline, GeometryCombineMode.Union, null);
+        if (item.Erasures.Count > 0) ink = Geometry.Combine(ink, ErasedArea(item), GeometryCombineMode.Exclude, null);
+        return ink;
     }
     public static Geometry ErasedArea(SceneItem item)
     {

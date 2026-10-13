@@ -5,13 +5,13 @@
 ## 英雄图片与名称
 
 《守望先锋》英雄图片、角色名称及相关商标归 Blizzard Entertainment 及相应权利人所有。
-本工具内置官方公开英雄页的 53 位英雄头像，用于识别教学标记。
+本工具内置官方公开英雄页的 54 位英雄头像，用于识别教学标记。
 图片在构建时处理为 256 × 256 的圆形透明 PNG。素材权利与使用条件由原权利人保留。
 
 - 国际服官方名单与头像入口：https://overwatch.blizzard.com/en-us/heroes/
 - 国服官方页面：https://ow.blizzard.cn/heroes/
 - 国服页面公开引用的名称清单：https://ld5.res.netease.com/pc/zt/20241115153332/static/heroConfigs.json
-- 素材快照日期：2026-09-26。
+- 名单核对日期：2026-10-12；基础头像获取于 2026-09-26，血律头像获取于 2026-10-12。
 - 每张图片的原始 URL、原图 SHA-256、成品 SHA-256 和原图尺寸记录在 `src/AnshanOverlay/Assets/heroes.json`。
 
 ## 运行时

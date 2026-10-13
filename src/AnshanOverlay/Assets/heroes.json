@@ -1,7 +1,7 @@
 {
   "source": "https://overwatch.blizzard.com/en-us/heroes/",
-  "retrievedAt": "2026-09-26T02:57:01.926253+00:00",
-  "count": 53,
+  "retrievedAt": "2026-10-12T13:05:35.484355+00:00",
+  "count": 54,
   "heroes": [
     {
       "id": "dmon",
@@ -148,6 +148,21 @@
       "image": "domina.png",
       "originalSha256": "1161c112292c56c052c0ae711792fcde06e3251b98bc9709e582dd7585b5dcd6",
       "sha256": "50ce9f2f94bf0683602bae9f5fcc77dfaa4570c6895f9b1b579b89a0bdc062d4",
+      "originalSize": [
+        256,
+        256
+      ]
+    },
+    {
+      "id": "doctrine",
+      "englishName": "Doctrine",
+      "role": "support",
+      "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/2492a15c575c12314907d0d77501ec337b4d56796bc7f03e5dfb50d415612bae.png",
+      "name": "血律",
+      "aliases": "xl xue lv xuelv 血律",
+      "image": "doctrine.png",
+      "originalSha256": "2492a15c575c12314907d0d77501ec337b4d56796bc7f03e5dfb50d415612bae",
+      "sha256": "a2173a274976385d54c8ce69bd93a6cc75634064318ef7483a18306b69a27dc7",
       "originalSize": [
         256,
         256
@@ -621,7 +636,7 @@
     {
       "id": "sombra",
       "englishName": "Sombra",
-      "role": "damage",
+      "role": "support",
       "sourceUrl": "https://d15f34w2p8l1cc.cloudfront.net/overwatch/47727b02a16e3bd7b2447d86ae1edf11587bc320b2aecb4f2f16a7ca4ad4e8a0.png",
       "name": "黑影",
       "aliases": "hy hei ying 黑影",

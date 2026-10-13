@@ -10,7 +10,8 @@ namespace AnshanOverlay;
 public sealed class BoardView : FrameworkElement
 {
     public Scene Scene { get; set; } = new();
-    public string? Selection { get; set; }
+    public IReadOnlySet<string> SelectedIds { get; set; } = new HashSet<string>();
+    public Rect? SelectionBox { get; set; }
     public string? DraggedHeroId { get; set; }
     public bool Editing { get; set; }
     public bool DrawEditorChrome { get; set; } = true;
@@ -58,16 +59,23 @@ public sealed class BoardView : FrameworkElement
             else if (item.Kind == "line") DrawLine(dc, item, color);
             if (item.Erasures.Count > 0) dc.Pop();
             dc.Pop();
-            if (DrawEditorChrome && Editing && item.Id == Selection)
+            if (DrawEditorChrome && Editing && SelectedIds.Contains(item.Id))
             {
                 if (item.Kind == "hero")
                     dc.DrawEllipse(null, new Pen(Brushes.White, 2) { DashStyle = DashStyles.Dash }, item.Start, item.Size / 2 + 9, item.Size / 2 + 9);
-                else
+                else if (SelectedIds.Count == 1)
                     foreach (var p in new[] { item.Start, item.End }) dc.DrawEllipse(Brushes.White, new Pen(color, 2), p, 6, 6);
+                else
+                {
+                    var bounds = Editor.SelectionBounds(item);
+                    if (!bounds.IsEmpty) { bounds.Inflate(5, 5); dc.DrawRectangle(null, new Pen(Brushes.White, 1.5) { DashStyle = DashStyles.Dash }, bounds); }
+                }
             }
         }
         if (DrawEditorChrome && Editing && EraserPosition is { } cursor)
             dc.DrawEllipse(null, new Pen(Brush("#FF9C27"), 1.5) { DashStyle = DashStyles.Dot }, cursor, EraserRadius, EraserRadius);
+        if (DrawEditorChrome && Editing && SelectionBox is { } box)
+            dc.DrawRectangle(Brush("#22FF9C27"), new Pen(Brush("#FF9C27"), 1.5) { DashStyle = DashStyles.Dash }, box);
     }
     private static Pen Stroke(SceneItem item, Brush brush, double width)
     {

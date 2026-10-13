@@ -9,7 +9,7 @@
     <AssemblyName>AnshanOverlay</AssemblyName>
     <RootNamespace>AnshanOverlay</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.1.0</Version>
+    <Version>0.1.2-beta</Version>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <Product>安山守望 · 教学标注</Product>
     <Description>守望先锋桌面战术标注与 OBS 透明输出</Description>

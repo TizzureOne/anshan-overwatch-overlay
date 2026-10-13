@@ -62,6 +62,7 @@ NAMES = {
  "wuyang": ("无漾", "wy wu yang"), "zarya": ("查莉娅", "cly 毛妹 cha li ya"),
  "zenyatta": ("禅雅塔", "cyt 和尚 chan ya ta"), "anran": ("安燃", "ar an ran"),
  "dmon": ("D.Mon", "dmon"), "domina": ("金驭", "jy jin yu"),
+ "doctrine": ("血律", "xl xue lv xuelv"),
  "emre": ("埃姆雷", "aml ai mu lei"), "jetpack-cat": ("飞天猫", "ftm fei tian mao"),
  "mizuki": ("瑞希", "rx rui xi"), "shion": ("死怨", "sy si yuan"),
  "sierra": ("西拉", "xl xi la"), "vendetta": ("斩仇", "zc zhan chou"),

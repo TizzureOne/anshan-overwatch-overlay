@@ -131,7 +131,7 @@ public sealed class ToolbarWindow : Window
             button.ToolTip = controller.BindingText(tool.ToString().ToLowerInvariant());
         }
         var selected = controller.Editor.Selected;
-        string state = controller.Editor.Tool + (controller.Editor.Tool == EditorTool.Move ? $"/{selected?.Id}/{selected?.Width}/{selected?.Opacity}/{selected?.Dashed}/{selected?.Size}" : "");
+        string state = controller.Editor.Tool + (controller.Editor.Tool == EditorTool.Move ? $"/{controller.Editor.SelectedIds.Count}/{selected?.Id}/{selected?.Width}/{selected?.Opacity}/{selected?.Dashed}/{selected?.Size}" : controller.Editor.Tool == EditorTool.Hero ? $"/{controller.Editor.Team}" : "");
         if (shownState == state || changingParameter || adjusting) return;
         shownState = state; BuildParameters();
     }
@@ -140,7 +140,14 @@ public sealed class ToolbarWindow : Window
         parameters.Children.Clear(); var editor = controller.Editor;
         if (editor.Tool == EditorTool.Move)
         {
-            if (editor.Selected is not { } selected) { parameters.Children.Add(new TextBlock { Text = "点击选中标注，拖动移动；选中后可编辑样式。", FontSize = 11 }); return; }
+            if (editor.Selected is not { } selected)
+            {
+                parameters.Children.Add(new TextBlock { Text = editor.SelectedIds.Count > 1
+                    ? $"已选 {editor.SelectedIds.Count} 项 · 拖动整体移动\nShift+点击加选/取消 · {controller.BindingText("delete")} 删除 · {controller.BindingText("duplicate")} 复制"
+                    : "点击单选，Shift+点击加选/取消。\n从空白处拖动框选，Shift+框选追加。",
+                    FontSize = 11, TextWrapping = TextWrapping.Wrap, MaxWidth = 245 });
+                return;
+            }
             if (selected.Kind == "hero") Slider("尺寸", selected.Size, 24, 400, v => controller.UpdateSelected(i => i with { Size = v }), true);
             else
             {
@@ -156,7 +163,7 @@ public sealed class ToolbarWindow : Window
             foreach (var (team, name, color) in new[] { ("ally", "友方", "#1482D4"), ("enemy", "敌方", "#D52E48") })
             {
                 var b = new RadioButton { Content = name, GroupName = "NewHeroTeam", Foreground = BoardView.Brush(color), IsChecked = editor.Team == team, FontSize = 11, Margin = new Thickness(0, 2, 12, 0) };
-                b.Checked += (_, _) => editor.Team = team; parameters.Children.Add(b);
+                b.Checked += (_, _) => controller.SetHeroTeam(team); parameters.Children.Add(b);
             }
             Slider("尺寸", editor.Size, 40, 180, v => editor.Size = v);
         }

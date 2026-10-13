@@ -29,7 +29,7 @@ public sealed class Preferences
         new("undo", "撤销", false, new(Key.Z, ModifierKeys.Control)), new("redo", "重做", false, new(Key.Y, ModifierKeys.Control)),
         new("duplicate", "复制选中", false, new(Key.D, ModifierKeys.Control)), new("delete", "删除选中", false, new(Key.Delete)),
         new("clear", "清空画布", false, new(Key.Delete, ModifierKeys.Control | ModifierKeys.Shift)),
-        new("cancel", "取消并开启穿透", false, new(Key.Escape)) };
+        new("cancel", "取消操作 / 取消选择 / 穿透", false, new(Key.Escape)) };
     public Dictionary<string, Shortcut> Shortcuts { get; set; } = Actions.ToDictionary(a => a.Id, a => a.Default);
     public double PanelWidth { get; set; } = 474;
     public double PanelHeight { get; set; } = 900;

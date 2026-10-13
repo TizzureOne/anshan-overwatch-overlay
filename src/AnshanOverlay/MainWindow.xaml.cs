@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -16,6 +17,7 @@ public partial class MainWindow : Window
     private string role = "tank";
     private Point heroDragOrigin;
     private bool draggedHero;
+    private readonly List<Hero> batchHeroes = new();
     private double expandedHeight;
     private HeroDragPreviewWindow? dragPreview;
     public bool IsFolded { get; private set; }
@@ -54,7 +56,7 @@ public partial class MainWindow : Window
         UndoButton.IsEnabled = controller.Store.CanUndo; RedoButton.IsEnabled = controller.Store.CanRedo;
         ObsUrl.Text = controller.Server.Port == 0 ? "OBS 服务未启动" : controller.Server.Url;
         ObsSize.Text = $"宽度 {controller.Store.Current.Width:0}   /   高度 {controller.Store.Current.Height:0}";
-
+        BlueTeam.IsChecked = controller.Editor.Team == "ally"; RedTeam.IsChecked = controller.Editor.Team == "enemy";
     }
     private void FilterHeroes()
     {
@@ -89,7 +91,53 @@ public partial class MainWindow : Window
     private void HeroClick(object s, RoutedEventArgs e)
     {
         if (draggedHero) { draggedHero = false; return; }
+        if (BatchMode.IsChecked == true) { ToggleBatchHero((Hero)((Button)s).Tag); return; }
         controller.ChooseHero((Hero)((Button)s).Tag);
+    }
+    private void HeroTeamChanged(object s, RoutedEventArgs e)
+    {
+        if (ready && s is RadioButton button && button.IsChecked == true) controller.SetHeroTeam((string)button.Tag);
+    }
+    private void BatchModeChanged(object s, RoutedEventArgs e)
+    {
+        if (!ready) return;
+        batchHeroes.Clear(); controller.Editor.Cancel(); controller.Editor.PendingHero = null;
+        UpdateBatchControls(); RefreshHeroButtons();
+    }
+    internal void ToggleBatchHero(Hero hero)
+    {
+        if (batchHeroes.Any(h => h.Id == hero.Id)) batchHeroes.RemoveAll(h => h.Id == hero.Id);
+        else batchHeroes.Add(hero);
+        UpdateBatchControls(); RefreshHeroButtons();
+    }
+    private void UpdateBatchControls()
+    {
+        BatchActions.Visibility = BatchMode.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        BatchHint.Text = batchHeroes.Count == 0 ? "点击英雄加入列表，再点一次取消；可切换职责继续选择。" : $"已选 {batchHeroes.Count} 位：" + string.Join("、", batchHeroes.Select(h => h.Name));
+        AddHeroesButton.Content = batchHeroes.Count == 0 ? "添加英雄" : $"添加 {batchHeroes.Count} 位英雄";
+        AddHeroesButton.IsEnabled = batchHeroes.Count > 0;
+    }
+    private void HeroButtonLoaded(object s, RoutedEventArgs e) => RefreshHeroButton((Button)s);
+    private void RefreshHeroButton(Button button)
+    {
+        bool selected = batchHeroes.Any(h => h.Id == ((Hero)button.Tag).Id);
+        button.Background = BoardView.Brush(selected ? "#FFE1B8" : "#E5EAF0");
+        button.BorderBrush = BoardView.Brush(selected ? "#FF9C27" : "#C5CFDB");
+        button.BorderThickness = new Thickness(selected ? 2 : 1);
+    }
+    private void RefreshHeroButtons()
+    {
+        for (int n = 0; n < HeroList.Items.Count; n++)
+            if (HeroList.ItemContainerGenerator.ContainerFromIndex(n) is ContentPresenter presenter && presenter.ContentTemplate?.FindName("HeroButton", presenter) is Button button)
+                RefreshHeroButton(button);
+    }
+    private void AddHeroesClick(object s, RoutedEventArgs e)
+    {
+        controller.AddHeroes(batchHeroes.ToArray()); batchHeroes.Clear(); UpdateBatchControls(); RefreshHeroButtons();
+    }
+    private void ClearHeroSelectionClick(object s, RoutedEventArgs e)
+    {
+        batchHeroes.Clear(); UpdateBatchControls(); RefreshHeroButtons();
     }
     private void HeroDragStart(object s, MouseButtonEventArgs e) { heroDragOrigin = e.GetPosition(this); draggedHero = false; }
     private void HeroDragMove(object s, MouseEventArgs e)

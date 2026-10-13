@@ -93,7 +93,7 @@ public sealed class Controller
         }
         PassThrough = enabled; Overlay.SetPassThrough(enabled);
         if (enabled && previousWindow != IntPtr.Zero && Native.IsWindow(previousWindow)) Native.SetForegroundWindow(previousWindow);
-        if (!enabled) { Overlay.Activate(); RaisePanel(); }
+        if (!enabled && !testMode) { Overlay.Activate(); RaisePanel(); }
         SetStatus(enabled ? $"鼠标穿透中 · {BindingText("edit")} 恢复编辑。" : $"编辑中 · 拖动头像或绘制；{BindingText("edit")} 返回游戏。");
     }
     public void ToggleTopmost()
@@ -117,6 +117,33 @@ public sealed class Controller
         Editor.PendingHero = hero; SetTool(EditorTool.Hero);
         SetStatus($"已选择 {hero.Name} · 在画面上点击放置，放置后可直接拖动。");
     }
+    public void SetHeroTeam(string team)
+    {
+        if (Editor.Team == team) return;
+        Editor.Team = team; Notify();
+    }
+    public void AddHeroes(IReadOnlyList<Hero> heroes)
+    {
+        if (heroes.Count == 0) return;
+        Editor.Cancel();
+        double size = 0; int columns = 1;
+        for (int n = heroes.Count; n >= 1; n--)
+        {
+            int rows = (heroes.Count + n - 1) / n;
+            double candidate = Math.Min(Editor.Size, Math.Min((Store.Current.Width - 32) / (n * 1.15), (Store.Current.Height - 32) / (rows * 1.15)));
+            if (candidate > size) { size = candidate; columns = n; }
+            if (size == Editor.Size) break;
+        }
+        double step = size * 1.15;
+        int rowCount = (heroes.Count + columns - 1) / columns;
+        double top = Editor.Team == "ally" ? 16 : Store.Current.Height - 16 - rowCount * step;
+        var added = heroes.Select((hero, index) => new SceneItem { HeroId = hero.Id, Team = Editor.Team, Size = size,
+            X = 16 + index % columns * step + step / 2, Y = top + index / columns * step + step / 2 }).ToList();
+        Editor.Select(added.Select(i => i.Id)); Editor.PendingHero = null;
+        Store.Edit(s => s with { Visible = true, Items = s.Items.Concat(added).ToList() });
+        SetTool(EditorTool.Move);
+        SetStatus($"已添加 {added.Count} 位{(Editor.Team == "ally" ? "蓝方" : "红方")}英雄，可拖动任一头像整体移动。");
+    }
     public void ChangeScreen(DisplayInfo screen)
     {
         Editor.Cancel(); Screen = screen; Store.Resize(screen.Width, screen.Height);
@@ -126,7 +153,14 @@ public sealed class Controller
     public void Undo() { Editor.Cancel(); Store.Undo(); Overlay.Refresh(); }
     public void Redo() { Editor.Cancel(); Store.Redo(); Overlay.Refresh(); }
     public void Clear(bool linesOnly) { Editor.Cancel(); Store.Clear(linesOnly); }
-    public void Delete() { Editor.Cancel(); Store.Remove(Editor.SelectedId); }
+    public void Delete() => Editor.Delete();
+    public void CancelOrDeselect()
+    {
+        if (Editor.IsDragging) { Editor.Cancel(); Overlay.Board.ReleaseMouseCapture(); }
+        else if (Editor.SelectedIds.Count > 0) Editor.SelectedId = null;
+        else { SetPassThrough(true); return; }
+        Overlay.Refresh(); Notify();
+    }
     public void SetHeroNames(bool show)
     {
         Editor.Cancel(); Store.Edit(s => s with { ShowHeroNames = show });
@@ -173,7 +207,7 @@ public sealed class Controller
             case "undo": Undo(); break; case "redo": Redo(); break;
             case "duplicate": Editor.Cancel(); Editor.Duplicate(); Overlay.Refresh(); Notify(); break;
             case "delete": Delete(); break; case "clear": Clear(false); break;
-            case "cancel": Editor.Cancel(); SetPassThrough(true); break;
+            case "cancel": CancelOrDeselect(); break;
         }
     }
     private string RegisterHotkeys(Dictionary<string, Shortcut>? bindings = null)

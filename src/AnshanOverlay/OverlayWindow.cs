@@ -30,7 +30,7 @@ public sealed class OverlayWindow : Window
         Board.MouseLeftButtonDown += (_, e) =>
         {
             if (controller.PassThrough) return;
-            Board.Focus(); controller.Editor.Down(e.GetPosition(Board));
+            Board.Focus(); controller.Editor.Down(e.GetPosition(Board), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             if (controller.Editor.IsDragging) Board.CaptureMouse();
             Refresh(); controller.Notify(); e.Handled = true;
         };
@@ -39,10 +39,11 @@ public sealed class OverlayWindow : Window
             Board.EraserPosition = !controller.PassThrough && controller.Editor.Tool == EditorTool.Eraser ? e.GetPosition(Board) : null;
             Board.EraserRadius = controller.Editor.EraserSize / 2;
             controller.Editor.Move(e.GetPosition(Board), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
-            Board.InvalidateVisual();
+            Refresh();
+            if (controller.Editor.SelectionBox is not null) controller.Notify();
         };
         Board.MouseLeave += (_, _) => { Board.EraserPosition = null; Board.InvalidateVisual(); };
-        Board.MouseLeftButtonUp += (_, e) => { controller.Editor.Up(); Board.ReleaseMouseCapture(); controller.Notify(); e.Handled = true; };
+        Board.MouseLeftButtonUp += (_, e) => { controller.Editor.Up(); Board.ReleaseMouseCapture(); Refresh(); controller.Notify(); e.Handled = true; };
         Board.LostMouseCapture += (_, _) => { controller.Editor.Cancel(); Refresh(); };
         Board.MouseRightButtonDown += (_, e) =>
         {
@@ -66,8 +67,8 @@ public sealed class OverlayWindow : Window
     public void Refresh()
     {
         Board.Scene = controller.Store.Current; Board.Width = Board.Scene.Width; Board.Height = Board.Scene.Height;
-        Board.Selection = controller.Editor.SelectedId; Board.Editing = !controller.PassThrough;
-        Board.DraggedHeroId = controller.Editor.IsDragging && controller.Editor.Selected?.Kind == "hero" ? controller.Editor.SelectedId : null;
+        Board.SelectedIds = controller.Editor.SelectedIds; Board.SelectionBox = controller.Editor.SelectionBox; Board.Editing = !controller.PassThrough;
+        Board.DraggedHeroId = controller.Editor.IsMoving && controller.Editor.Selected?.Kind == "hero" ? controller.Editor.SelectedId : null;
         if (controller.Editor.Tool != EditorTool.Eraser || controller.PassThrough) Board.EraserPosition = null;
         Board.Cursor = controller.Editor.Tool is EditorTool.Hero or EditorTool.Move ? Cursors.Arrow : controller.Editor.Tool == EditorTool.Eraser ? Cursors.Cross : Cursors.Pen;
         Board.InvalidateVisual();
