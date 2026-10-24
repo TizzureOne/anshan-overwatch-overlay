@@ -14,6 +14,7 @@ public sealed record Shortcut(Key Key, ModifierKeys Modifiers = ModifierKeys.Non
         (Modifiers.HasFlag(ModifierKeys.Shift) ? "Shift+" : "") + (Modifiers.HasFlag(ModifierKeys.Windows) ? "Win+" : "") + Key;
 }
 public sealed record ShortcutAction(string Id, string Label, bool Global, Shortcut Default);
+public sealed record WindowPosition(double Left, double Top);
 public sealed class Preferences
 {
     public static readonly ShortcutAction[] Actions = {
@@ -35,9 +36,12 @@ public sealed class Preferences
     public double PanelHeight { get; set; } = 900;
     public double ToolbarWidth { get; set; } = 680;
     public double ToolbarHeight { get; set; } = 220;
+    public WindowPosition? PanelPosition { get; set; }
+    public WindowPosition? ToolbarPosition { get; set; }
     public bool AutomaticallyCheckUpdates { get; set; } = true;
     public bool IncludeBetaUpdates { get; set; } = BuildInfo.IsBeta;
     public bool AnimateInterface { get; set; } = true;
+    public int PassThroughOpacityPercent { get; set; } = 50;
     public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "settings.json");
     public static string? Validate(Dictionary<string, Shortcut> shortcuts)
     {
@@ -63,6 +67,7 @@ public sealed class Preferences
         if (Validate(value.Shortcuts) is { } error) throw new InvalidDataException(error);
         value.PanelWidth = Size(value.PanelWidth, 340, 2400, 474); value.PanelHeight = Size(value.PanelHeight, 420, 2000, 900);
         value.ToolbarWidth = Size(value.ToolbarWidth, 300, 2400, 680); value.ToolbarHeight = Size(value.ToolbarHeight, 150, 1400, 180);
+        value.PassThroughOpacityPercent = Math.Clamp(value.PassThroughOpacityPercent, 0, 100);
         return value;
     }
     private static double Size(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;

@@ -15,6 +15,7 @@ public sealed class BoardView : FrameworkElement
     public string? DraggedHeroId { get; set; }
     public bool Editing { get; set; }
     public bool DrawEditorChrome { get; set; } = true;
+    public double PassThroughOpacity { get; set; } = .5;
     public string ModeHint { get; set; } = "";
     public Point? EraserPosition { get; set; }
     public double EraserRadius { get; set; }
@@ -31,9 +32,10 @@ public sealed class BoardView : FrameworkElement
         if (Editing && DrawEditorChrome)
             dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)), null, new Rect(0, 0, ActualWidth, ActualHeight));
         if (!Scene.Visible) return;
+        double modeOpacity = DrawEditorChrome && !Editing ? PassThroughOpacity : 1;
         foreach (var item in Scene.Items)
         {
-            dc.PushOpacity(item.Opacity * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
+            dc.PushOpacity(item.Opacity * modeOpacity * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
             if (item.Erasures.Count > 0) dc.PushClip(Geometry.Combine(new RectangleGeometry(new Rect(0, 0, Scene.Width, Scene.Height)), Editor.ErasedArea(item), GeometryCombineMode.Exclude, null));
             var color = Brush(item.Kind == "hero" ? item.HeroBorder : item.Color);
             if (item.Kind == "hero")

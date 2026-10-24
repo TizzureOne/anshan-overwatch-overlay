@@ -78,8 +78,12 @@ public sealed class Controller
         try { await Server.StartAsync(); Server.Publish(Store.Serialize()); }
         catch (Exception ex) { Status = "OBS 服务未能启动：" + ex.Message; }
         Overlay.Show(); Overlay.Place(Screen); Overlay.Refresh(); Panel.Show();
-        Toolbar.Left = SystemParameters.WorkArea.Left + Math.Max(0, (SystemParameters.WorkArea.Width - Toolbar.Width) / 2);
-        Toolbar.Top = SystemParameters.WorkArea.Bottom - Toolbar.Height - 16; Toolbar.Show();
+        if (Settings.ToolbarPosition is null)
+        {
+            Toolbar.Left = SystemParameters.WorkArea.Left + Math.Max(0, (SystemParameters.WorkArea.Width - Toolbar.Width) / 2);
+            Toolbar.Top = SystemParameters.WorkArea.Bottom - Toolbar.Height - 16;
+        }
+        Toolbar.Show();
         CreateTray(); Notify(); Panel.StartUpdateChecks();
     }
     public void Notify()
@@ -182,6 +186,18 @@ public sealed class Controller
     {
         Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => i.Id == id && i.Kind == "hero" ? change(i) : i).ToList() });
     }
+    public string? SetPassThroughOpacity(int percent)
+    {
+        int before = Settings.PassThroughOpacityPercent;
+        Settings.PassThroughOpacityPercent = Math.Clamp(percent, 0, 100);
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Settings.PassThroughOpacityPercent = before;
+            return "透明度设置未能保存，请检查文件权限后重试。";
+        }
+        Overlay.Refresh(); Notify(); return null;
+    }
     public string? ApplyUpdatePreferences(bool automatic, bool beta, bool animations)
     {
         var before = (Settings.AutomaticallyCheckUpdates, Settings.IncludeBetaUpdates, Settings.AnimateInterface);
@@ -203,7 +219,9 @@ public sealed class Controller
     private void SaveWindowSettings()
     {
         Settings.PanelWidth = double.IsFinite(Panel.RestoreBounds.Width) ? Panel.RestoreBounds.Width : Panel.Width; Settings.PanelHeight = Panel.ExpandedHeight;
-        Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight; Settings.Save();
+        Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight;
+        Settings.PanelPosition = WindowLayout.Capture(Panel); Settings.ToolbarPosition = WindowLayout.Capture(Toolbar);
+        Settings.Save();
     }
     public void RaisePanel()
     {

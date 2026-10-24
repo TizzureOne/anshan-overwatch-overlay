@@ -35,6 +35,7 @@ public sealed class ToolbarWindow : Window
         this.controller = controller;
         Title = "安山守望 · 工具栏"; Width = controller.Settings.ToolbarWidth; Height = controller.Settings.ToolbarHeight; MinWidth = 300; MinHeight = 150;
         WindowStyle = WindowStyle.None; ResizeMode = ResizeMode.CanResizeWithGrip; Topmost = true; ShowInTaskbar = false;
+        WindowLayout.Restore(this, controller.Settings.ToolbarPosition);
         Background = BoardView.Brush("#F4F6F9"); Foreground = BoardView.Brush("#27374A");
         FontFamily = new FontFamily("Microsoft YaHei UI"); UseLayoutRounding = true;
         Icon = Assets.AppIcon;

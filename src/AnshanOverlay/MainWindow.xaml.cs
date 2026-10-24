@@ -29,9 +29,11 @@ public partial class MainWindow : Window
         Title = "安山守望 · " + BuildInfo.Label; VersionText.Text = BuildInfo.Label;
         CurrentVersionText.Text = "当前版本 " + BuildInfo.Version + " · " + BuildInfo.EditionName;
         AutomaticUpdates.IsChecked = controller.Settings.AutomaticallyCheckUpdates; BetaUpdates.IsChecked = controller.Settings.IncludeBetaUpdates; AnimateUi.IsChecked = controller.Settings.AnimateInterface;
+        PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         Loaded += (_, _) => Motion.Reveal(ExpandedPanel);
         Width = Math.Min(controller.Settings.PanelWidth, SystemParameters.WorkArea.Width - 24);
         Height = Math.Min(controller.Settings.PanelHeight, SystemParameters.WorkArea.Height - 24);
+        WindowLayout.Restore(this, controller.Settings.PanelPosition);
         Icon = Assets.AppIcon;
         WindowGestures.EnableBlankDrag(this);
         ScreenBox.ItemsSource = controller.Screens; ScreenBox.SelectedItem = controller.Screen;
@@ -61,6 +63,8 @@ public partial class MainWindow : Window
         VisibleButton.Content = controller.Store.Current.Visible ? "●  标注可见" : "○  标注已隐藏";
         StatusText.Text = controller.Status;
         HotkeyWarningText.Text = controller.HotkeyWarning;
+        PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
+        PassThroughOpacityText.Text = controller.Settings.PassThroughOpacityPercent + "%";
         ObjectCount.Text = $"{controller.Store.Current.Items.Count(i => i.Kind == "hero")} 个英雄  /  {controller.Store.Current.Items.Count(i => i.Kind != "hero")} 个标注";
         UndoButton.IsEnabled = controller.Store.CanUndo; RedoButton.IsEnabled = controller.Store.CanRedo;
         ObsUrl.Text = controller.Server.Port == 0 ? "OBS 服务未启动" : controller.Server.Url;
@@ -94,6 +98,13 @@ public partial class MainWindow : Window
     private void CloseClick(object s, RoutedEventArgs e) => ClosePanel();
     private void ExitClick(object s, RoutedEventArgs e) => controller.Close();
     private void ModeClick(object s, RoutedEventArgs e) => controller.TogglePassThrough();
+    private void PassThroughOpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (!ready) return;
+        int percent = (int)Math.Round(PassThroughOpacity.Value);
+        PassThroughOpacityText.Text = percent + "%";
+        if (percent != controller.Settings.PassThroughOpacityPercent && controller.SetPassThroughOpacity(percent) is { } error) controller.SetStatus(error);
+    }
     private void TopmostClick(object s, RoutedEventArgs e) => controller.ToggleTopmost();
     private void VisibleClick(object s, RoutedEventArgs e) => controller.ToggleVisible();
     private void SearchChanged(object s, TextChangedEventArgs e) => FilterHeroes();

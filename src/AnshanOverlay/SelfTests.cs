@@ -26,6 +26,33 @@ public static class SelfTests
         void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); count++; }
         await UpdateTests.RunAsync(Check, output);
         var manifest = Assets.LoadHeroes();
+        var opacityCases = new (SceneItem Item, int X, int Y)[] {
+            (new() { HeroId = "ana", X = 50, Y = 50, Size = 40, Opacity = .8 }, 50, 40),
+            (new() { Kind = "line", X = 100, Y = 40, X2 = 160, Y2 = 40, Width = 8, Opacity = .6 }, 125, 40),
+            (new() { Kind = "line", X = 190, Y = 40, X2 = 265, Y2 = 40, Width = 8, Arrow = true, Opacity = .7 }, 220, 40),
+            (new() { Kind = "circle", X = 25, Y = 100, X2 = 75, Y2 = 150, Width = 8, Opacity = .9 }, 50, 100),
+            (new() { Kind = "rectangle", X = 105, Y = 100, X2 = 165, Y2 = 150, Width = 8, Opacity = .5 }, 130, 100),
+            (new() { Kind = "path", Points = new() { new(200, 120), new(230, 120), new(260, 150) }, Width = 8, Opacity = .4 }, 215, 120) };
+        var opacityScene = new Scene { Width = 300, Height = 180, ShowHeroNames = true, Items = opacityCases.Select(c => c.Item).ToList() };
+        string originalOpacityScene = JsonSerializer.Serialize(opacityScene, Assets.Json);
+        var opacityBoard = new BoardView { Scene = opacityScene, Heroes = manifest.Heroes };
+        foreach (double factor in new[] { 0d, .5, 1d })
+        {
+            opacityBoard.PassThroughOpacity = factor; opacityBoard.InvalidateVisual();
+            string image = Path.Combine(output, $"pass-through-opacity-{factor * 100:0}.png"); Render(opacityBoard, 300, 180, image);
+            foreach (var sample in opacityCases)
+                Check(Math.Abs(PixelAlpha(image, sample.X, sample.Y) - sample.Item.Opacity * factor * 255) <= 2, $"pass-through opacity multiplies the original opacity for {sample.Item.Kind} arrow={sample.Item.Arrow} at {factor}");
+            Check(Math.Abs(PixelAlpha(image, 50, 77) - .8 * factor * 255) <= 2, "hero name fades with the rest of its avatar at " + factor);
+        }
+        opacityBoard.PassThroughOpacity = 0; opacityBoard.DrawEditorChrome = false; opacityBoard.InvalidateVisual();
+        string cleanOpacityFile = Path.Combine(output, "pass-through-opacity-obs.png"); Render(opacityBoard, 300, 180, cleanOpacityFile);
+        foreach (var sample in opacityCases)
+            Check(Math.Abs(PixelAlpha(cleanOpacityFile, sample.X, sample.Y) - sample.Item.Opacity * 255) <= 2, "clean output preserves original opacity for " + sample.Item.Kind);
+        opacityBoard.DrawEditorChrome = true; opacityBoard.Editing = true; opacityBoard.InvalidateVisual();
+        string editOpacityFile = Path.Combine(output, "pass-through-opacity-edit.png"); Render(opacityBoard, 300, 180, editOpacityFile);
+        foreach (var sample in opacityCases)
+            Check(Math.Abs(PixelAlpha(editOpacityFile, sample.X, sample.Y) - sample.Item.Opacity * 255) <= 2, "editing restores original opacity for " + sample.Item.Kind);
+        Check(JsonSerializer.Serialize(opacityScene, Assets.Json) == originalOpacityScene, "mode opacity never changes the stored scene or individual object opacity");
         Check(manifest.Count == manifest.Heroes.Count && manifest.Count >= 54, "complete official roster");
         Check(manifest.Heroes.Select(h => h.Id).Distinct().Count() == manifest.Count, "unique hero IDs");
         var doctrine = manifest.Heroes.Single(h => h.Id == "doctrine");
@@ -280,6 +307,21 @@ public static class SelfTests
         Check(Preferences.Validate(settings.Shortcuts) is null, "shortcut can be unassigned");
         var restoredSettings = JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(settings, Assets.Json), Assets.Json)!;
         Check(restoredSettings.Shortcuts["brush"].Key == Key.F8, "shortcut settings roundtrip");
+        var layoutWindow = new Window { Left = 140, Top = 90, Width = 474, Height = 800, WindowStartupLocation = WindowStartupLocation.CenterScreen };
+        var windowSettings = new Preferences { PanelPosition = WindowLayout.Capture(layoutWindow), ToolbarPosition = new(-920, 210), PassThroughOpacityPercent = 37 };
+        string windowSettingsFile = Path.Combine(output, "window-settings.json"); File.WriteAllText(windowSettingsFile, JsonSerializer.Serialize(windowSettings, Assets.Json));
+        var restoredWindowSettings = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(windowSettingsFile), Assets.Json)!;
+        layoutWindow.Left = 0; layoutWindow.Top = 0; WindowLayout.Restore(layoutWindow, restoredWindowSettings.PanelPosition);
+        Check(layoutWindow.WindowStartupLocation == WindowStartupLocation.Manual && layoutWindow.Left == 140 && layoutWindow.Top == 90, "saved panel position overrides the old centered startup location");
+        WindowLayout.Restore(layoutWindow, restoredWindowSettings.ToolbarPosition);
+        Check(layoutWindow.Left == -920 && layoutWindow.Top == 210 && restoredWindowSettings.PassThroughOpacityPercent == 37, "negative secondary-monitor coordinates and opacity survive settings serialization");
+        WindowLayout.Restore(layoutWindow, new(double.NaN, 10));
+        Check(layoutWindow.Left == -920 && layoutWindow.Top == 210, "invalid saved coordinates do not overwrite a valid window position");
+        Check(WindowLayout.FitPosition(new Rect(140, 90, 474, 800), new Rect(0, 0, 1920, 1040)) == new Point(140, 90), "visible saved positions remain unchanged");
+        Check(WindowLayout.FitPosition(new Rect(2400, 1300, 474, 800), new Rect(0, 0, 1920, 1040)) == new Point(1446, 240), "removed monitors restore windows inside the current work area");
+        Check(WindowLayout.FitPosition(new Rect(-1800, -200, 680, 220), new Rect(-1920, -1080, 1920, 1080)) == new Point(-1800, -220), "work area clamping supports monitors above and to the left");
+        Check(WindowLayout.FitPosition(new Rect(-500, -500, 2000, 1200), new Rect(0, 0, 1280, 720)) == new Point(0, 0), "oversized restored windows retain a reachable top-left corner");
+        layoutWindow.Close();
         Check(Assets.AppIcon.PixelWidth == 256 && Assets.Read("Assets/app.ico")[2] == 1, "embedded application icons available");
         using (var extracted = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!))
         {
@@ -295,6 +337,16 @@ public static class SelfTests
         var background = new System.Windows.Controls.Grid { Background = BoardView.Brush("#263746"), Width = 1920, Height = 1080 };
         background.Children.Add(view); Render(background, 1920, 1080, Path.Combine(output, "overlay-preview.png"));
         var controller = new Controller(test: true);
+        string beforeOpacitySettings = controller.Store.Serialize(); bool undoBeforeOpacity = controller.Store.CanUndo;
+        foreach (int percent in new[] { 0, 25, 50, 100 })
+        {
+            controller.Panel.PassThroughOpacity.Value = percent;
+            Check(controller.Settings.PassThroughOpacityPercent == percent && controller.Panel.PassThroughOpacityText.Text == percent + "%" && controller.Overlay.Board.PassThroughOpacity == percent / 100d, "settings slider immediately updates all desktop annotations at " + percent);
+        }
+        controller.SetPassThroughOpacity(-10); Check(controller.Settings.PassThroughOpacityPercent == 0, "pass-through opacity clamps below zero");
+        controller.SetPassThroughOpacity(110); Check(controller.Settings.PassThroughOpacityPercent == 100, "pass-through opacity clamps above one hundred");
+        controller.SetPassThroughOpacity(50);
+        Check(controller.Store.Serialize() == beforeOpacitySettings && controller.Store.CanUndo == undoBeforeOpacity, "opacity preference changes leave the scene and undo history intact");
         var overlayHandle = new WindowInteropHelper(controller.Overlay).EnsureHandle();
         Check(!controller.Overlay.IsVisible && Native.GetProp(overlayHandle, "NonRudeHWND") == new IntPtr(1), "overlay opts out of fullscreen taskbar suppression before it is shown");
         string beforePlacement = controller.Store.Serialize();
@@ -303,7 +355,7 @@ public static class SelfTests
         Check(controller.Panel.VersionText.Text == BuildInfo.Label && controller.Panel.Title.Contains(BuildInfo.Version) && controller.Panel.CurrentVersionText.Text.Contains(BuildInfo.Version), "all visible version labels read the built application version");
         Check(BuildInfo.Edition is "Full" or "Lite" && BuildInfo.Version.StartsWith(typeof(BuildInfo).Assembly.GetName().Version!.ToString(3)), "version and installer edition are embedded in the built assembly");
         var legacyPreferences = JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!;
-        Check(legacyPreferences.AutomaticallyCheckUpdates && legacyPreferences.IncludeBetaUpdates == BuildInfo.IsBeta && legacyPreferences.AnimateInterface, "old settings get automatic checks and the correct update channel defaults");
+        Check(legacyPreferences.AutomaticallyCheckUpdates && legacyPreferences.IncludeBetaUpdates == BuildInfo.IsBeta && legacyPreferences.AnimateInterface && legacyPreferences.PassThroughOpacityPercent == 50 && legacyPreferences.PanelPosition is null && legacyPreferences.ToolbarPosition is null, "old settings get defaults for updates opacity and missing window positions");
         controller.ApplyUpdatePreferences(false, false, false);
         var updatePreferences = JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(controller.Settings, Assets.Json), Assets.Json)!;
         Check(!updatePreferences.AutomaticallyCheckUpdates && !updatePreferences.IncludeBetaUpdates && !updatePreferences.AnimateInterface && !Motion.CanAnimate, "update and motion preferences roundtrip without touching user settings");

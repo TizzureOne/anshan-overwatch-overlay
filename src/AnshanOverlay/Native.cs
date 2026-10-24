@@ -15,6 +15,8 @@ public static class Native
 {
     public const int ExTransparent = 0x20, ExNoActivate = 0x08000000, ExToolWindow = 0x80;
     [StructLayout(LayoutKind.Sequential)] public struct CursorPoint { public int X; public int Y; }
+    [StructLayout(LayoutKind.Sequential)] public struct WindowRectangle { public int Left; public int Top; public int Right; public int Bottom; }
+    [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr hwnd, out WindowRectangle rectangle);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out CursorPoint point);
     [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] public static extern int GetWindowLong(IntPtr hwnd, int index);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] public static extern int SetWindowLong(IntPtr hwnd, int index, int value);

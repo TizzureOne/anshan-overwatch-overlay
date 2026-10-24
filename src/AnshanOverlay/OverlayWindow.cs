@@ -78,6 +78,7 @@ public sealed class OverlayWindow : Window
         Board.Scene = controller.Store.Current; Board.Width = Board.Scene.Width; Board.Height = Board.Scene.Height;
         Board.SelectedIds = controller.Editor.SelectedIds; Board.SelectionBox = controller.Editor.SelectionBox; Board.Editing = !controller.PassThrough;
         Board.ModeHint = controller.ModeState + " · " + controller.ModeShortcut;
+        Board.PassThroughOpacity = controller.Settings.PassThroughOpacityPercent / 100d;
         Board.DraggedHeroId = controller.Editor.IsMoving && controller.Editor.Selected?.Kind == "hero" ? controller.Editor.SelectedId : null;
         if (controller.Editor.Tool != EditorTool.Eraser || controller.PassThrough) Board.EraserPosition = null;
         Board.Cursor = controller.Editor.Tool is EditorTool.Hero or EditorTool.Move ? Cursors.Arrow : controller.Editor.Tool == EditorTool.Eraser ? Cursors.Cross : Cursors.Pen;
