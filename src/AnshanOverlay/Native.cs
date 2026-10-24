@@ -26,6 +26,7 @@ public static class Native
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern IntPtr GetWindow(IntPtr hwnd, uint command);
     [DllImport("user32.dll", EntryPoint = "GetPropW", CharSet = CharSet.Unicode)] public static extern IntPtr GetProp(IntPtr hwnd, string name);
     [DllImport("user32.dll", EntryPoint = "SetPropW", CharSet = CharSet.Unicode)] public static extern bool SetProp(IntPtr hwnd, string name, IntPtr value);
     [DllImport("user32.dll", EntryPoint = "RemovePropW", CharSet = CharSet.Unicode)] public static extern IntPtr RemoveProp(IntPtr hwnd, string name);

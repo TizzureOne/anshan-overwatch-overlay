@@ -617,6 +617,32 @@ public static class SelfTests
         controller.Overlay.Topmost = true;
         Check((Native.GetWindowLong(hwnd, -20) & 8) != 0, "native topmost on");
         Check(Native.GetProp(hwnd, "NonRudeHWND") == new IntPtr(1), "taskbar compatibility survives switching window topmost state");
+        var toolbarHandle = new WindowInteropHelper(controller.Toolbar).EnsureHandle();
+        Native.SetWindowPos(panelHandle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        Native.SetWindowPos(toolbarHandle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        controller.ToggleTopmost(); controller.ToggleTopmost();
+        Check(IsAbove(panelHandle, hwnd) && IsAbove(toolbarHandle, hwnd), "re-enabling canvas topmost keeps both controls above its mouse-intercepting surface");
+        Check(Native.GetWindow(panelHandle, 4) == hwnd && Native.GetWindow(toolbarHandle, 4) == hwnd, "native ownership enforces control windows above the canvas");
+        var foregroundBeforeOrder = Native.GetForegroundWindow();
+        string sceneBeforeOrder = controller.Store.Serialize();
+        controller.ToggleTopmost();
+        Check((Native.GetWindowLong(hwnd, -20) & 8) == 0 && (Native.GetWindowLong(panelHandle, -20) & 8) != 0 && (Native.GetWindowLong(toolbarHandle, -20) & 8) != 0, "unpinning the canvas preserves independently topmost control windows");
+        controller.RaisePanel();
+        Check((Native.GetWindowLong(hwnd, -20) & 8) == 0 && !controller.Panel.IsVisible && !controller.Toolbar.IsVisible, "raising controls neither repins the canvas nor shows hidden panels");
+        controller.ToggleTopmost();
+        Native.SetWindowPos(hwnd, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        Check(IsAbove(panelHandle, hwnd) && IsAbove(toolbarHandle, hwnd), "native canvas raising cannot cover its owned controls without any activation callback");
+        controller.SetPassThrough(false); controller.Panel.FinishHeroDrag(true); controller.SetPassThrough(false);
+        controller.Overlay.Place(controller.Screen);
+        Check(IsAbove(panelHandle, hwnd) && IsAbove(toolbarHandle, hwnd) && (Native.GetWindowLong(hwnd, -20) & Native.ExTransparent) == 0, "controls stay above the mouse-intercepting canvas after mode changes drag cleanup and screen placement");
+        var shortcutDialog = new ShortcutWindow(controller);
+        var shortcutHandle = new WindowInteropHelper(shortcutDialog).EnsureHandle();
+        Native.SetWindowPos(shortcutHandle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        controller.RaisePanel();
+        Check(IsAbove(shortcutHandle, panelHandle) && Native.GetWindow(shortcutHandle, 4) == panelHandle, "control raising leaves its shortcut dialog above the main panel");
+        shortcutDialog.Close();
+        Check(Native.GetForegroundWindow() == foregroundBeforeOrder && controller.Store.Serialize() == sceneBeforeOrder, "window ordering changes preserve desktop focus and the saved scene");
+        Check(Native.GetProp(hwnd, "NonRudeHWND") == new IntPtr(1), "owned control ordering preserves auto-hide taskbar compatibility");
         await using var server = new ObsServer(manifest); await server.StartAsync(0); server.Publish(store.Serialize());
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         string root = $"http://127.0.0.1:{server.Port}";
@@ -646,6 +672,12 @@ public static class SelfTests
         Check(Encoding.UTF8.GetString(rb, 0, rr.Count).Contains("\"visible\":false"), "OBS reconnect restores latest state");
         await reconnect.CloseAsync(WebSocketCloseStatus.NormalClosure, "test", timeout.Token);
         File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, heroes = manifest.Count, serverPort = server.Port, utc = DateTime.UtcNow, renderTier = RenderCapability.Tier >> 16 }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+    private static bool IsAbove(IntPtr window, IntPtr other)
+    {
+        for (var previous = Native.GetWindow(other, 3); previous != IntPtr.Zero; previous = Native.GetWindow(previous, 3))
+            if (previous == window) return true;
+        return false;
     }
     private static void Render(FrameworkElement element, int width, int height, string path)
     {

@@ -9,7 +9,7 @@
     <AssemblyName>AnshanOverlay</AssemblyName>
     <RootNamespace>AnshanOverlay</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <Version>0.1.6-beta</Version>
+    <Version>0.1.7-beta</Version>
     <AnshanEdition Condition="'$(AnshanEdition)' == ''">Full</AnshanEdition>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
     <Product>安山守望 · 教学标注</Product>

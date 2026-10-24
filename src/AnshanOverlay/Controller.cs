@@ -60,7 +60,10 @@ public sealed class Controller
         // Recover in visible, click-through mode so a saved hidden state cannot
         // leave users drawing on an invisible canvas after restart.
         Store.Preview(Store.Current with { Visible = true });
-        Overlay = new OverlayWindow(this); Panel = new MainWindow(this); Toolbar = new ToolbarWindow(this);
+        Overlay = new OverlayWindow(this);
+        new WindowInteropHelper(Overlay).EnsureHandle();
+        // Windows keeps owned controls above the canvas, including on native reordering.
+        Panel = new MainWindow(this) { Owner = Overlay }; Toolbar = new ToolbarWindow(this) { Owner = Overlay };
         publishTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
         publishTimer.Tick += (_, _) => { publishTimer.Stop(); Server.Publish(Store.Serialize()); };
         saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -111,6 +114,7 @@ public sealed class Controller
     public void ToggleTopmost()
     {
         AlwaysOnTop = !AlwaysOnTop; Overlay.Topmost = AlwaysOnTop;
+        RaisePanel();
         SetStatus(AlwaysOnTop ? "画布已置顶。" : "画布已取消置顶，可能被其他窗口遮住。");
     }
     public void ToggleVisible()
@@ -181,7 +185,7 @@ public sealed class Controller
     {
         Editor.Cancel(); Editor.Dashed = dashed; Notify();
     }
-    public void ShowPanel() { Panel.SetFolded(false); Panel.Show(); Panel.WindowState = WindowState.Normal; Panel.Activate(); if (!Toolbar.IsVisible) { Toolbar.SetFolded(false); Toolbar.Show(); } }
+    public void ShowPanel() { Panel.SetFolded(false); Panel.Show(); Panel.WindowState = WindowState.Normal; Panel.Activate(); if (!Toolbar.IsVisible) { Toolbar.SetFolded(false); Toolbar.Show(); } RaisePanel(); }
     public void UpdateHero(string id, Func<SceneItem, SceneItem> change)
     {
         Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => i.Id == id && i.Kind == "hero" ? change(i) : i).ToList() });
@@ -225,12 +229,14 @@ public sealed class Controller
     }
     public void RaisePanel()
     {
-        // Editing can activate the full-screen overlay. Keep its separate controls
-        // above it without stealing keyboard focus from the drawing canvas.
-        if (Panel.IsVisible && Panel.WindowState != WindowState.Minimized)
-            Native.SetWindowPos(new WindowInteropHelper(Panel).Handle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
-        if (Toolbar is not null && Toolbar.IsVisible)
-            Native.SetWindowPos(new WindowInteropHelper(Toolbar).Handle, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        // Demoting the owner also demotes owned HWNDs. Restore controls without
+        // activating, showing hidden windows, or raising the canvas with them.
+        var panel = new WindowInteropHelper(Panel).Handle;
+        if (panel != IntPtr.Zero && Panel.WindowState != WindowState.Minimized)
+            Native.SetWindowPos(panel, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        var toolbar = Toolbar is null ? IntPtr.Zero : new WindowInteropHelper(Toolbar).Handle;
+        if (toolbar != IntPtr.Zero && Toolbar!.WindowState != WindowState.Minimized)
+            Native.SetWindowPos(toolbar, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
     }
     public string BindingText(string id) => Settings.Shortcuts[id].ToString();
     public void HandleEditorKey(KeyEventArgs e)
@@ -362,7 +368,7 @@ public sealed class Controller
         var hwnd = new WindowInteropHelper(Panel).Handle;
         foreach (var id in hotkeys) Native.UnregisterHotKey(hwnd, id);
         if (!testMode) try { SaveWindowSettings(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine(ex); }
-        tray?.Dispose(); trayIcon?.Dispose(); Toolbar.Close(); Overlay.Close(); Panel.Close();
+        tray?.Dispose(); trayIcon?.Dispose(); Toolbar.Close(); Panel.Close(); Overlay.Close();
         await Server.DisposeAsync(); Application.Current.Shutdown();
     }
 }
