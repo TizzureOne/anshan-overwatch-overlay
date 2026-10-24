@@ -295,7 +295,11 @@ public static class SelfTests
         var background = new System.Windows.Controls.Grid { Background = BoardView.Brush("#263746"), Width = 1920, Height = 1080 };
         background.Children.Add(view); Render(background, 1920, 1080, Path.Combine(output, "overlay-preview.png"));
         var controller = new Controller(test: true);
-        new WindowInteropHelper(controller.Overlay).EnsureHandle();
+        var overlayHandle = new WindowInteropHelper(controller.Overlay).EnsureHandle();
+        Check(!controller.Overlay.IsVisible && Native.GetProp(overlayHandle, "NonRudeHWND") == new IntPtr(1), "overlay opts out of fullscreen taskbar suppression before it is shown");
+        string beforePlacement = controller.Store.Serialize();
+        controller.Overlay.Place(controller.Screen);
+        Check(Native.GetProp(overlayHandle, "NonRudeHWND") == new IntPtr(1) && !controller.Overlay.IsVisible && controller.Store.Serialize() == beforePlacement, "screen placement preserves taskbar compatibility and full scene dimensions without showing a test window");
         Check(controller.Panel.VersionText.Text == BuildInfo.Label && controller.Panel.Title.Contains(BuildInfo.Version) && controller.Panel.CurrentVersionText.Text.Contains(BuildInfo.Version), "all visible version labels read the built application version");
         Check(BuildInfo.Edition is "Full" or "Lite" && BuildInfo.Version.StartsWith(typeof(BuildInfo).Assembly.GetName().Version!.ToString(3)), "version and installer edition are embedded in the built assembly");
         var legacyPreferences = JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!;
@@ -543,6 +547,7 @@ public static class SelfTests
         Native.SetPassThrough(hwnd, false);
         Check((Native.GetWindowLong(hwnd, -20) & Native.ExTransparent) == 0, "native click-through disabled");
         Check((Native.GetWindowLong(hwnd, -20) & Native.ExNoActivate) == 0, "edit mode can receive keyboard focus");
+        Check(Native.GetProp(hwnd, "NonRudeHWND") == new IntPtr(1), "taskbar compatibility survives edit and mouse pass-through changes");
         controller.SetPassThrough(false); controller.Editor.Tool = EditorTool.Move;
         controller.Editor.Down(new Point(600, 500)); controller.Editor.Move(new Point(700, 550), false); controller.Overlay.Refresh();
         Check(controller.Overlay.Board.SelectionBox is not null, "overlay receives live marquee geometry");
@@ -559,6 +564,7 @@ public static class SelfTests
         Check((Native.GetWindowLong(hwnd, -20) & 8) == 0, "native topmost off");
         controller.Overlay.Topmost = true;
         Check((Native.GetWindowLong(hwnd, -20) & 8) != 0, "native topmost on");
+        Check(Native.GetProp(hwnd, "NonRudeHWND") == new IntPtr(1), "taskbar compatibility survives switching window topmost state");
         await using var server = new ObsServer(manifest); await server.StartAsync(0); server.Publish(store.Serialize());
         using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         string root = $"http://127.0.0.1:{server.Port}";

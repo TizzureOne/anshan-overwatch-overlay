@@ -62,7 +62,14 @@ public sealed class OverlayWindow : Window
         };
         Board.MouseWheel += (_, e) => { controller.Editor.ResizeSelected(Math.Sign(e.Delta)); e.Handled = true; };
         PreviewKeyDown += (_, e) => controller.HandleEditorKey(e);
-        SourceInitialized += (_, _) => Native.SetPassThrough(new WindowInteropHelper(this).Handle, controller.PassThrough);
+        SourceInitialized += (_, _) =>
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            // Keep the full-monitor overlay from suppressing the auto-hide taskbar.
+            Native.SetProp(handle, "NonRudeHWND", new IntPtr(1));
+            Native.SetPassThrough(handle, controller.PassThrough);
+        };
+        Closing += (_, _) => Native.RemoveProp(new WindowInteropHelper(this).Handle, "NonRudeHWND");
         Activated += (_, _) => controller.RaisePanel();
         Closed += (_, _) => { if (!controller.IsClosing) controller.Close(); };
     }
