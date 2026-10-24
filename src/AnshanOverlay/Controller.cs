@@ -28,7 +28,7 @@ public sealed class Controller
     public bool PassThrough { get; private set; } = true;
     public bool AlwaysOnTop { get; private set; } = true;
     public bool IsClosing { get; private set; }
-    public string Status { get; private set; } = "选择英雄，在画面上点击放置。";
+    public string Status { get; private set; } = "从英雄库拖出头像，放到画布上。";
     public string HotkeyWarning { get; private set; } = "";
     public string ModeState => PassThrough ? "当前：鼠标穿透" : "当前：编辑中 · 画布接收鼠标";
     public string ModeShortcut => Settings.Shortcuts["edit"].Key == Key.None ? "点击模式按钮切换" : BindingText("edit") + " 切换";
@@ -128,11 +128,6 @@ public sealed class Controller
         Editor.Cancel(); Editor.Tool = tool;
         SetPassThrough(false); Overlay.Refresh(); Notify();
     }
-    public void ChooseHero(Hero hero)
-    {
-        Editor.PendingHero = hero; SetTool(EditorTool.Hero);
-        SetStatus($"已选择 {hero.Name} · 在画面上点击放置，放置后可直接拖动。");
-    }
     public void SetHeroTeam(string team)
     {
         if (Editor.Team == team) return;
@@ -155,7 +150,7 @@ public sealed class Controller
         double top = Editor.Team == "ally" ? 16 : Store.Current.Height - 16 - rowCount * step;
         var added = heroes.Select((hero, index) => new SceneItem { HeroId = hero.Id, Team = Editor.Team, Size = size,
             X = 16 + index % columns * step + step / 2, Y = top + index / columns * step + step / 2 }).ToList();
-        Editor.Select(added.Select(i => i.Id)); Editor.PendingHero = null;
+        Editor.Select(added.Select(i => i.Id));
         Store.Edit(s => s with { Visible = true, Items = s.Items.Concat(added).ToList() });
         SetTool(EditorTool.Move);
         SetStatus($"已添加 {added.Count} 位{(Editor.Team == "ally" ? "蓝方" : "红方")}英雄，可拖动任一头像整体移动。");
@@ -186,9 +181,9 @@ public sealed class Controller
         Editor.Cancel(); Editor.Dashed = dashed; Notify();
     }
     public void ShowPanel() { Panel.SetFolded(false); Panel.Show(); Panel.WindowState = WindowState.Normal; Panel.Activate(); if (!Toolbar.IsVisible) { Toolbar.SetFolded(false); Toolbar.Show(); } RaisePanel(); }
-    public void UpdateHero(string id, Func<SceneItem, SceneItem> change)
+    public void UpdateHeroes(IReadOnlySet<string> ids, Func<SceneItem, SceneItem> change)
     {
-        Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => i.Id == id && i.Kind == "hero" ? change(i) : i).ToList() });
+        Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => ids.Contains(i.Id) && i.Kind == "hero" ? change(i) : i).ToList() });
     }
     public string? SetPassThroughOpacity(int percent)
     {
@@ -257,7 +252,7 @@ public sealed class Controller
             case "edit": TogglePassThrough(); break; case "topmost": ToggleTopmost(); break;
             case "visible": ToggleVisible(); break; case "panel": ShowPanel(); break;
             case "move": SetTool(EditorTool.Move); break;
-            case "hero": SetTool(EditorTool.Hero); ShowPanel(); break;
+            case "hero": Panel.MainTabs.SelectedIndex = 0; ShowPanel(); break;
             case "brush": SetTool(EditorTool.Brush); break; case "line": SetTool(EditorTool.Line); break;
             case "arrow": SetTool(EditorTool.Arrow); break; case "circle": SetTool(EditorTool.Circle); break;
             case "rectangle": SetTool(EditorTool.Rectangle); break; case "eraser": SetTool(EditorTool.Eraser); break;

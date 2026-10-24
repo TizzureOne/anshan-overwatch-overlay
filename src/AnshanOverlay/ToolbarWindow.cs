@@ -142,7 +142,7 @@ public sealed class ToolbarWindow : Window
             button.ToolTip = controller.BindingText(tool.ToString().ToLowerInvariant());
         }
         var selected = controller.Editor.Selected;
-        string state = controller.Editor.Tool + (controller.Editor.Tool == EditorTool.Move ? $"/{controller.Editor.SelectedIds.Count}/{selected?.Id}/{selected?.Width}/{selected?.Opacity}/{selected?.Dashed}/{selected?.Size}" : controller.Editor.Tool == EditorTool.Hero ? $"/{controller.Editor.Team}" : "");
+        string state = controller.Editor.Tool + (controller.Editor.Tool == EditorTool.Move ? $"/{controller.Editor.SelectedIds.Count}/{selected?.Id}/{selected?.Width}/{selected?.Opacity}/{selected?.Dashed}/{selected?.Size}" : "");
         if (shownState == state || changingParameter || adjusting) return;
         shownState = state; BuildParameters(); Motion.Reveal(parameters);
     }
@@ -168,15 +168,6 @@ public sealed class ToolbarWindow : Window
                 parameters.Children.Add(lineStyle);
             }
             Slider("不透明度", selected.Opacity * 100, 0, 100, v => controller.UpdateSelected(i => i with { Opacity = v / 100 }), true, "%");
-        }
-        else if (editor.Tool == EditorTool.Hero)
-        {
-            foreach (var (team, name, color) in new[] { ("ally", "友方", "#1482D4"), ("enemy", "敌方", "#D52E48") })
-            {
-                var b = new RadioButton { Content = name, GroupName = "NewHeroTeam", Foreground = BoardView.Brush(color), IsChecked = editor.Team == team, FontSize = 11, Margin = new Thickness(0, 2, 12, 0) };
-                b.Checked += (_, _) => controller.SetHeroTeam(team); parameters.Children.Add(b);
-            }
-            Slider("尺寸", editor.Size, 40, 180, v => editor.Size = v);
         }
         else if (editor.Tool == EditorTool.Eraser)
         {

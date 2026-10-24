@@ -99,7 +99,6 @@ public sealed class SceneStore
     public void Undo() { if (!CanUndo) return; redo.Push(Current); var s = undo[^1]; undo.RemoveAt(undo.Count - 1); Preview(s); }
     public void Redo() { if (!CanRedo) return; undo.Add(Current); Preview(redo.Pop()); }
     public void Replace(SceneItem item) => Preview(Current with { Items = Current.Items.Select(x => x.Id == item.Id ? item : x).ToList() });
-    public void Remove(string? id) => Edit(s => s with { Items = s.Items.Where(x => x.Id != id).ToList() });
     public void Clear(bool linesOnly) => Edit(s => s with { Items = linesOnly ? s.Items.Where(x => x.Kind == "hero").ToList() : new() });
     public string Serialize() => JsonSerializer.Serialize(Current, Assets.Json);
     public static Scene Parse(string json, IReadOnlyCollection<Hero> heroes)
@@ -142,27 +141,24 @@ public sealed class SceneStore
     }
 }
 
-public enum EditorTool { Move, Hero, Brush, Line, Arrow, Circle, Rectangle, Eraser }
+public enum EditorTool { Move, Brush, Line, Arrow, Circle, Rectangle, Eraser }
 public sealed class ToolSettings
 {
     public string Color { get; set; } = "#FFD166";
     public double Width { get; set; } = 5;
-    public double Size { get; set; } = 80;
-    public string Team { get; set; } = "ally";
 }
 
 public sealed class Editor
 {
     public readonly SceneStore Store;
     public EditorTool Tool { get; set; }
-    public Hero? PendingHero { get; set; }
     public Dictionary<EditorTool, ToolSettings> Settings { get; } = Enum.GetValues<EditorTool>().ToDictionary(t => t, _ => new ToolSettings());
     public ToolSettings Options => Settings[Tool];
     public string Color { get => Options.Color; set => Options.Color = value; }
     public double Width { get => Options.Width; set => Options.Width = value; }
     public bool Dashed { get => Store.Current.DrawingDashed; set => Store.Edit(s => s with { DrawingDashed = value }); }
-    public double Size { get => Settings[EditorTool.Hero].Size; set => Settings[EditorTool.Hero].Size = value; }
-    public string Team { get => Settings[EditorTool.Hero].Team; set => Settings[EditorTool.Hero].Team = value; }
+    public double Size { get; set; } = 80;
+    public string Team { get; set; } = "ally";
     private readonly HashSet<string> selection = new();
     public IReadOnlySet<string> SelectedIds => selection;
     public string? SelectedId
@@ -218,13 +214,6 @@ public sealed class Editor
         if (original is not null) { SelectedId = original.Id; return; }
         SelectedId = null;
         if (Tool == EditorTool.Eraser) { erasing = true; lastErase = point; Erase(point); return; }
-        if (Tool == EditorTool.Hero && PendingHero is not null)
-        {
-            before = null;
-            var item = new SceneItem { HeroId = PendingHero.Id, X = point.X, Y = point.Y, Size = Size, Team = Team };
-            Store.Edit(s => s with { Visible = true, Items = s.Items.Append(item).ToList() });
-            SelectedId = item.Id; return;
-        }
         before = Store.Current; endpoint = 0;
         if (Tool is EditorTool.Line or EditorTool.Arrow or EditorTool.Circle or EditorTool.Rectangle or EditorTool.Brush)
         {
@@ -233,14 +222,6 @@ public sealed class Editor
             SelectedId = original.Id;
             Store.Preview(Store.Current with { Items = Store.Current.Items.Append(original).ToList() });
             endpoint = 2;
-        }
-        else
-        {
-            original = Store.Current.Items.AsEnumerable().Reverse().FirstOrDefault(i => Hit(i, point));
-            SelectedId = original?.Id;
-            if (original is null) { before = null; return; }
-            if (original.Kind == "line" && original.Erasures.Count == 0)
-                endpoint = (point - original.Start).Length < 14 ? 1 : (point - original.End).Length < 14 ? 2 : 0;
         }
     }
     public void Move(Point point, bool snap)
@@ -260,7 +241,7 @@ public sealed class Editor
                 foreach (var item in before.Items)
                 {
                     var bounds = SelectionBounds(item);
-                    if (!bounds.IsEmpty && SelectionBox.Value.Contains(bounds)) selection.Add(item.Id);
+                    if (!bounds.IsEmpty && (item.Kind == "hero" ? SelectionBox.Value.IntersectsWith(bounds) : SelectionBox.Value.Contains(bounds))) selection.Add(item.Id);
                 }
                 return;
             }

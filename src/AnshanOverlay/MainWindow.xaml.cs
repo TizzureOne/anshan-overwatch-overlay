@@ -115,8 +115,7 @@ public partial class MainWindow : Window
     private void HeroClick(object s, RoutedEventArgs e)
     {
         if (draggedHero) { draggedHero = false; return; }
-        if (BatchMode.IsChecked == true) { ToggleBatchHero((Hero)((Button)s).Tag); return; }
-        controller.ChooseHero((Hero)((Button)s).Tag);
+        if (BatchMode.IsChecked == true) ToggleBatchHero((Hero)((Button)s).Tag);
     }
     private void HeroTeamChanged(object s, RoutedEventArgs e)
     {
@@ -125,7 +124,7 @@ public partial class MainWindow : Window
     private void BatchModeChanged(object s, RoutedEventArgs e)
     {
         if (!ready) return;
-        batchHeroes.Clear(); controller.Editor.Cancel(); controller.Editor.PendingHero = null;
+        batchHeroes.Clear(); controller.Editor.Cancel();
         UpdateBatchControls(); RefreshHeroButtons();
     }
     internal void ToggleBatchHero(Hero hero)
@@ -151,7 +150,7 @@ public partial class MainWindow : Window
     private void RefreshHeroButton(Button button)
     {
         string id = ((Hero)button.Tag).Id;
-        bool selected = BatchMode.IsChecked == true ? batchHeroes.Any(h => h.Id == id) : controller.Editor.Tool == EditorTool.Hero && controller.Editor.PendingHero?.Id == id;
+        bool selected = BatchMode.IsChecked == true && batchHeroes.Any(h => h.Id == id);
         Motion.Paint(button, BackgroundProperty, selected ? "#FFF0DE" : "#FFFFFF");
         Motion.Paint(button, BorderBrushProperty, selected ? "#E9AF64" : "#D8DEE8");
         button.BorderThickness = new Thickness(selected ? 2 : 1);

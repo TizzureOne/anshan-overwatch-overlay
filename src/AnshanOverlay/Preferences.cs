@@ -22,7 +22,7 @@ public sealed class Preferences
         new("topmost", "画布置顶", true, new(Key.T, ModifierKeys.Control | ModifierKeys.Alt)),
         new("visible", "显示 / 隐藏标注", true, new(Key.H, ModifierKeys.Control | ModifierKeys.Alt)),
         new("panel", "唤出面板", true, new(Key.P, ModifierKeys.Control | ModifierKeys.Alt)),
-        new("move", "移动", false, new(Key.V)), new("hero", "英雄", false, new(Key.H)),
+        new("move", "移动", false, new(Key.V)), new("hero", "英雄库", false, new(Key.H)),
         new("brush", "画笔", false, new(Key.B)), new("line", "直线", false, new(Key.L)),
         new("arrow", "箭头", false, new(Key.A)), new("circle", "椭圆", false, new(Key.C)),
         new("rectangle", "矩形", false, new(Key.R)), new("eraser", "橡皮擦", false, new(Key.E)),

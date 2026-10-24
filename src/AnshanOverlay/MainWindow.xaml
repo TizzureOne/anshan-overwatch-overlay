@@ -63,7 +63,10 @@
        </Grid>
       </StackPanel>
      </StackPanel>
-     <TextBlock x:Name="SearchHint" Grid.Row="3" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,8"/>
+     <StackPanel Grid.Row="3" Margin="0,0,0,8">
+      <TextBlock Text="拖出头像放到画布；批量添加请勾选“批量选择”。" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5"/>
+      <TextBlock x:Name="SearchHint" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+     </StackPanel>
      <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate><DataTemplate>
@@ -106,7 +109,7 @@
      <TextBlock x:Name="HotkeyWarningText" Foreground="#98611D" FontSize="11"/>
      <TextBlock x:Name="ShortcutHelp" LineHeight="23" Foreground="{StaticResource MutedBrush}"/>
      <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,10,0,10"/>
-     <TextBlock Text="从列表拖出英雄可直接放置。移动工具选择标注后可编辑样式。Shift 约束方向或比例；右键英雄调整阵营与尺寸。" Foreground="{StaticResource MutedBrush}"/>
+     <TextBlock Text="从列表拖出英雄可直接放置。框选接触头像即可选中，右键已选头像可批量调整阵营、尺寸或删除。移动工具选择标注后可编辑样式；Shift 约束方向或比例。" Foreground="{StaticResource MutedBrush}"/>
      <TextBlock Text="建议使用窗口化或无边框模式。独占全屏覆盖需实机确认。素材均内置，日常使用无需联网。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,18,0,0"/>
      <TextBlock x:Name="SourceInfo" Foreground="#67768A" FontSize="10" Margin="0,12,0,0"/>
     </StackPanel></ScrollViewer>

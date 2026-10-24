@@ -69,8 +69,8 @@ public static class SelfTests
             var converted = new FormatConvertedBitmap(image, PixelFormats.Bgra32, null, 0); var pixels = new byte[256 * 256 * 4]; converted.CopyPixels(pixels, 256 * 4, 0);
             Check(pixels[3] == 0 && pixels[(256 * 256 - 1) * 4 + 3] == 0, "prebaked transparent corners " + id);
         }
-        var store = new SceneStore(); var editor = new Editor(store) { PendingHero = manifest.Heroes.First(h => h.Id == "ana"), Tool = EditorTool.Hero };
-        editor.Down(new Point(350, 300)); Check(store.Current.Items.Count == 1, "hero placement");
+        var store = new SceneStore(); var editor = new Editor(store) { Tool = EditorTool.Move };
+        store.Edit(s => s with { Items = new() { new SceneItem { HeroId = "ana", X = 350, Y = 300 } } });
         editor.Down(new Point(350, 300)); editor.Move(new Point(500, 400), false); editor.Up();
         Check(store.Current.Items[0].X == 500, "drag moves hero"); store.Undo(); Check(store.Current.Items[0].X == 350, "one undo reverses whole drag");
         store.Redo(); Check(store.Current.Items[0].X == 500, "redo drag");
@@ -79,7 +79,7 @@ public static class SelfTests
         editor.Down(new Point(600, 400)); editor.Move(new Point(1000, 600), true); editor.Up();
         Check(store.Current.Items.Count == 2 && store.Current.Items[1].Arrow && store.Current.Items[1].Dashed, "dashed arrow");
         var line = store.Current.Items[1]; Check(Math.Abs(line.X2 - line.X - (line.Y2 - line.Y)) < 0.01, "45-degree snap");
-        editor.Tool = EditorTool.Hero; editor.PendingHero = null; editor.Down(line.End); editor.Move(new Point(1100, 620), false); editor.Up();
+        editor.Tool = EditorTool.Move; editor.Down(line.End); editor.Move(new Point(1100, 620), false); editor.Up();
         Check(store.Current.Items[1].X2 == 1100, "line endpoint editing");
         store.Clear(true); Check(store.Current.Items.Count == 1, "clear lines preserves heroes"); store.Undo();
         string json = store.Serialize(); Check(SceneStore.Parse(json, manifest.Heroes).Items.Count == 2, "save load roundtrip");
@@ -108,11 +108,11 @@ public static class SelfTests
         Check(newStore.Current.Items[^1].Dashed, "global dashed mode applies to line");
         Check(SceneStore.Parse(newStore.Serialize(), manifest.Heroes).Items.Count == 3, "new shapes survive scene roundtrip");
         var resizedPath = SceneStore.Scale(newStore.Current, 3840, 2160).Items[0]; Check(resizedPath.Points[1].X == 240, "brush points scale with display");
-        newEditor.Tool = EditorTool.Hero; newEditor.Down(new Point(120, 160)); newEditor.Move(new Point(120, 1080), false); newEditor.Up();
+        newEditor.Tool = EditorTool.Move; newEditor.Down(new Point(120, 160)); newEditor.Move(new Point(120, 1080), false); newEditor.Up();
         Check(newStore.Current.Items[0].Points.Max(p => p.Y) == 1080, "dragging brush stroke clamps all points within viewport");
         newStore.Undo();
-        var modes = new[] { EditorTool.Move, EditorTool.Hero, EditorTool.Brush, EditorTool.Line, EditorTool.Arrow, EditorTool.Circle, EditorTool.Rectangle, EditorTool.Eraser };
-        var interaction = new SceneStore(); var action = new Editor(interaction) { PendingHero = manifest.Heroes[0] };
+        var modes = Enum.GetValues<EditorTool>();
+        var interaction = new SceneStore(); var action = new Editor(interaction);
         foreach (var tool in modes)
         {
             interaction.Preview(new Scene { Items = new() { new SceneItem { HeroId = "ana", X = 500, Y = 300 } } });
@@ -120,7 +120,7 @@ public static class SelfTests
             Check(interaction.Current.Items.Count == 1 && interaction.Current.Items[0].X == 620 && action.Tool == tool, "hero drag takes priority and preserves tool " + tool);
         }
         foreach (bool dash in new[] { true, false })
-        foreach (var tool in modes.Where(t => t != EditorTool.Move && t != EditorTool.Hero && t != EditorTool.Eraser))
+        foreach (var tool in modes.Where(t => t != EditorTool.Move && t != EditorTool.Eraser))
         {
             interaction.Preview(new Scene()); action.Dashed = dash; action.Tool = tool;
             action.Down(new Point(500, 400)); action.Move(new Point(300, 300), false); action.Up();
@@ -222,9 +222,18 @@ public static class SelfTests
         selectionEditor.Up();
         Check(selectionEditor.SelectionBox is null && selectionEditor.SelectedIds.Count == 3, "marquee commits selection and removes its preview");
         selectionEditor.Down(new Point(330, 270)); selectionEditor.Move(new Point(60, 60), false); selectionEditor.Up();
-        Check(selectionEditor.SelectedIds.Count == 3, "reverse marquee uses the same full containment rule");
+        Check(selectionEditor.SelectedIds.Count == 3, "reverse marquee selects the same mixed objects");
         selectionEditor.Down(new Point(170, 80)); selectionEditor.Move(new Point(290, 170), false); selectionEditor.Up();
-        Check(selectionEditor.SelectedIds.Count == 0, "marquee excludes a partially enclosed hero including its border");
+        Check(selectionEditor.SelectedId == secondHero.Id, "marquee includes a partially enclosed hero including its border");
+        var firstBounds = Editor.SelectionBounds(firstHero);
+        selectionEditor.Down(new Point(40, 60)); selectionEditor.Move(new Point(firstBounds.Left + .01, 120), false); selectionEditor.Up();
+        Check(selectionEditor.SelectedId == firstHero.Id, "a one-hundredth-pixel marquee overlap selects a hero");
+        selectionEditor.Down(new Point(40, 60)); selectionEditor.Move(new Point(firstBounds.Left, 120), false); selectionEditor.Up();
+        Check(selectionEditor.SelectedId == firstHero.Id, "a marquee touching the hero border selects it");
+        selectionEditor.Down(new Point(40, 60)); selectionEditor.Move(new Point(firstBounds.Left - .01, 120), false); selectionEditor.Up();
+        Check(selectionEditor.SelectedIds.Count == 0, "a marquee just outside the hero border does not select it");
+        selectionEditor.Down(new Point(170, 160)); selectionEditor.Move(new Point(firstBounds.Right - .01, 80), false); selectionEditor.Up();
+        Check(selectionEditor.SelectedId == firstHero.Id, "reverse marquee selects a hero with only a tiny overlap");
         selectionEditor.Down(new Point(0, 0)); selectionEditor.Move(new Point(400, 340), false); selectionEditor.Up();
         Check(selectionEditor.SelectedIds.Count == 3 && !selectionEditor.SelectedIds.Contains(crossingArrow.Id), "marquee excludes an arrow that only crosses the box");
         selectionEditor.Down(secondHero.Start); selectionEditor.Up();
@@ -238,7 +247,7 @@ public static class SelfTests
         Check(selectionEditor.SelectedIds.Count == 2 && selectionEditor.SelectionBox is null, "cancel marquee restores the previous selection");
         selectionEditor.Down(secondHero.Start); selectionEditor.Up();
         selectionEditor.Down(firstHero.Start, true); selectionEditor.Move(new Point(330, 270), false); selectionEditor.Up();
-        Check(selectionEditor.SelectedId == secondHero.Id && selectionStore.Current == selectionScene, "shift drag can begin over an object without moving it");
+        Check(selectionEditor.SelectedIds.SetEquals(new[] { firstHero.Id, secondHero.Id }) && selectionStore.Current == selectionScene, "shift marquee beginning on a hero adds intersected heroes without moving them");
         Check(!selectionStore.CanUndo && !selectionStore.CanRedo, "selection-only gestures do not create scene undo entries");
         selectionEditor.Down(new Point(60, 60)); selectionEditor.Move(new Point(330, 270), false); selectionEditor.Up();
         selectionEditor.Down(firstHero.Start); selectionEditor.Move(new Point(160, 150), false); selectionEditor.Up();
@@ -392,9 +401,14 @@ public static class SelfTests
         controller.BeginPropertyEdit(); controller.UpdateSelected(i => i with { Width = 12 }); controller.UpdateSelected(i => i with { Width = 17, Dashed = true, Opacity = .3 }); controller.EndPropertyEdit();
         Check(controller.Editor.Selected!.Width == 17 && controller.Editor.Selected.Opacity == .3 && controller.Editor.Selected.Dashed, "move selection properties apply to selected item");
         controller.Undo(); Check(controller.Editor.Selected!.Width == 10 && !controller.Editor.Selected.Dashed, "one undo reverts entire property slider gesture");
-        controller.ChooseHero(doctrine); controller.Editor.Down(new Point(650, 260)); controller.Editor.Up();
-        Check(controller.Store.Current.Items[^1].HeroId == "doctrine" && controller.Store.Current.Items[^1].Team == "enemy", "single click placement uses the chosen faction for Doctrine");
+        controller.PlaceHero(doctrine, new Point(650, 260));
+        Check(controller.Store.Current.Items[^1].HeroId == "doctrine" && controller.Store.Current.Items[^1].Team == "enemy", "hero drop uses the chosen faction for Doctrine");
         controller.Undo();
+        controller.SetTool(EditorTool.Move);
+        string beforeCanvasClicks = controller.Store.Serialize();
+        controller.Editor.Down(new Point(700, 400)); controller.Editor.Up();
+        controller.Editor.Down(new Point(800, 500)); controller.Editor.Up();
+        Check(controller.Store.Serialize() == beforeCanvasClicks, "repeated blank canvas clicks cannot place another hero after a drop");
         string beforeBatch = controller.Store.Serialize();
         var lineup = new[] { "orisa", "genji", "ana", "sombra", "doctrine" }.Select(id => manifest.Heroes.Single(h => h.Id == id)).ToArray();
         controller.Panel.BatchMode.IsChecked = true;
@@ -425,7 +439,8 @@ public static class SelfTests
         controller.Panel.TankRole.IsChecked = true;
         controller.Store.Preview(new Scene { Items = new() { markedLine } }); controller.Editor.SelectedId = markedLine.Id;
         Check(controller.ApplyShortcuts(settings.Shortcuts) is null && controller.BindingText("brush") == "Ctrl+F8", "custom shortcuts applied and hints refreshed");
-        var heroMenu = controller.Overlay.CreateHeroMenu(store.Current.Items[0]);
+        controller.Store.Preview(new Scene { Items = new() { store.Current.Items[0] } });
+        var heroMenu = controller.Overlay.CreateHeroMenu(controller.Store.Current.Items[0]);
         Check(heroMenu.Items.OfType<System.Windows.Controls.MenuItem>().All(i => !i.HasItems), "hero menu keeps all actions in one popup at screen edges");
         heroMenu.Measure(new Size(264, double.PositiveInfinity));
         int heroMenuHeight = (int)Math.Ceiling(heroMenu.DesiredSize.Height);
@@ -467,6 +482,34 @@ public static class SelfTests
             Check(controller.Store.Current.Items.Count == 1 && controller.Store.Current.Items[0] == untouchedHero, "hero menu delete removes only its target");
             controller.Undo(); Check(controller.Store.Current.Items[0].Id == menuHero.Id && controller.Store.Current.Items[0].Size == 120, "undo restores a hero removed through its menu");
         }
+        var groupFirst = new SceneItem { HeroId = "ana", X = 200, Y = 200, Size = 60, Opacity = .6 };
+        var groupSecond = new SceneItem { HeroId = "genji", X = 320, Y = 200, Size = 100, Team = "enemy" };
+        var outsideHero = new SceneItem { HeroId = "orisa", X = 600, Y = 200 };
+        var groupScene = new Scene { Items = new() { groupFirst, groupSecond, outsideHero, markedLine } };
+        controller.Store.Preview(groupScene); controller.Editor.Select(new[] { groupFirst.Id, groupSecond.Id, markedLine.Id });
+        var groupMenu = controller.Overlay.CreateHeroMenu(groupFirst);
+        Check(controller.Editor.SelectedIds.SetEquals(new[] { groupFirst.Id, groupSecond.Id, markedLine.Id }), "right-clicking a selected hero preserves the complete mixed selection");
+        Check(((System.Windows.Controls.StackPanel)((System.Windows.Controls.MenuItem)groupMenu.Items[0]).Header).Children.OfType<System.Windows.Controls.StackPanel>().Single().Children.OfType<System.Windows.Controls.TextBlock>().Any(t => t.Text == "已选 2 位英雄"), "group menu identifies how many heroes its commands affect");
+        Check(!groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Any(i => i.IsChecked), "mixed teams and sizes are not misrepresented as a common value");
+        groupMenu.Measure(new Size(264, double.PositiveInfinity));
+        Render(groupMenu, 264, (int)Math.Ceiling(groupMenu.DesiredSize.Height), Path.Combine(output, "hero-group-context-menu.png"));
+        groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "敌方 · 红色")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.Items.SequenceEqual(new[] { groupFirst with { Team = "enemy" }, groupSecond, outsideHero, markedLine }), "group faction command changes every selected hero and preserves other objects and properties");
+        controller.Undo(); Check(controller.Store.Current == groupScene, "one undo restores the entire group faction command");
+        controller.Redo(); Check(controller.Store.Current.Items.Take(2).All(i => i.Team == "enemy"), "redo reapplies the entire group faction command"); controller.Undo();
+        groupMenu = controller.Overlay.CreateHeroMenu(groupSecond);
+        groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "120 px")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.Items.SequenceEqual(new[] { groupFirst with { Size = 120 }, groupSecond with { Size = 120 }, outsideHero, markedLine }), "group size command preserves positions factions opacity and unselected objects");
+        controller.Undo(); Check(controller.Store.Current == groupScene, "one undo restores different original sizes after a group size command");
+        groupMenu = controller.Overlay.CreateHeroMenu(groupFirst);
+        groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "删除 2 位英雄")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.Items.SequenceEqual(new[] { outsideHero, markedLine }) && controller.Editor.SelectedId == markedLine.Id, "group hero delete preserves selected annotations and unselected heroes and removes stale IDs");
+        controller.Undo(); Check(controller.Store.Current == groupScene, "one undo restores all heroes deleted through the group menu");
+        controller.Editor.Select(new[] { groupFirst.Id, groupSecond.Id });
+        var outsideMenu = controller.Overlay.CreateHeroMenu(outsideHero);
+        Check(controller.Editor.SelectedId == outsideHero.Id, "right-clicking an unselected hero switches to that single hero");
+        outsideMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "160 px")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.Items.SequenceEqual(new[] { groupFirst, groupSecond, outsideHero with { Size = 160 }, markedLine }), "an unselected hero menu does not modify the former group");
         controller.Store.Preview(beforeMenu); controller.Editor.SelectedId = beforeMenuSelection;
         controller.Editor.Tool = EditorTool.Rectangle; controller.Toolbar.Refresh();
         var toolbarContent = (FrameworkElement)controller.Toolbar.Content; controller.Toolbar.Content = null;

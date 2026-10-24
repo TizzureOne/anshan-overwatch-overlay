@@ -72,11 +72,13 @@ internal static class MotionTests
             check(panelContent.IsLoaded && board.IsLoaded, "isolated journey runs loaded WPF visuals without showing native windows");
             Motion.Enabled = true;
             bool animated = Motion.CanAnimate;
+            string beforeHeroClick = controller.Store.Serialize();
             await ClickHero("ana");
-            check(controller.Editor.PendingHero?.Id == "ana", "hero card click selects the searched hero during motion");
-            await Capture("search-and-select");
             controller.Editor.Down(new Point(240, 220)); controller.Editor.Up(); controller.Overlay.Refresh();
-            check(controller.Store.Current.Items.Single().HeroId == "ana", "single placement creates the intended hero while its entrance animates");
+            check(controller.Store.Serialize() == beforeHeroClick && controller.PassThrough, "hero card and canvas clicks cannot place a hero or leave mouse pass-through");
+            await Capture("search-before-drag");
+            controller.SetPassThrough(false); controller.PlaceHero(controller.Heroes.Heroes.Single(h => h.Id == "ana"), new Point(240, 220)); controller.Panel.FinishHeroDrag(true);
+            check(controller.Store.Current.Items.Single().HeroId == "ana" && controller.PassThrough, "hero drop creates the intended hero and restores mouse pass-through during its entrance");
             check(!animated || board.HasAnimatedProperties, "hero entrance uses the live WPF animation clock");
             await Capture("hero-entrance");
             panel.BatchMode.IsChecked = true; panel.RedTeam.IsChecked = true;
