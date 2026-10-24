@@ -8,6 +8,8 @@ namespace AnshanOverlay;
 
 public static class Motion
 {
+    private sealed record ResizeState(double Height, double Minimum);
+    private static readonly DependencyProperty ResizeStateProperty = DependencyProperty.RegisterAttached("ResizeState", typeof(ResizeState), typeof(Motion));
     public static bool Enabled { get; set; } = true;
     public static bool CanAnimate => Enabled && SystemParameters.ClientAreaAnimation;
     private static DoubleAnimation Transition(double from, double to, int milliseconds, int delay = 0) => new(from, to, TimeSpan.FromMilliseconds(milliseconds))
@@ -67,12 +69,23 @@ public static class Motion
     public static void Resize(Window window, double height, double minHeight)
     {
         double from = window.Height;
+        window.ClearValue(ResizeStateProperty);
         window.BeginAnimation(FrameworkElement.HeightProperty, null);
         window.MinHeight = Math.Min(window.MinHeight, minHeight); window.Height = height;
         if (!CanAnimate) { window.MinHeight = minHeight; return; }
+        var state = new ResizeState(height, minHeight); window.SetValue(ResizeStateProperty, state);
         var animation = Transition(from, height, 200);
-        animation.Completed += (_, _) => window.MinHeight = minHeight;
+        animation.Completed += (_, _) => { if (ReferenceEquals(window.GetValue(ResizeStateProperty), state)) FinishResize(window); };
         window.BeginAnimation(FrameworkElement.HeightProperty, animation);
+    }
+    public static double Height(Window window) => (window.GetValue(ResizeStateProperty) as ResizeState)?.Height ?? window.Height;
+    public static void FinishResize(Window window)
+    {
+        if (window.GetValue(ResizeStateProperty) is not ResizeState state) return;
+        window.ClearValue(ResizeStateProperty); window.BeginAnimation(FrameworkElement.HeightProperty, null);
+        // Native WM_SIZE messages can replace the animated property's base value.
+        // Commit the intended size explicitly instead of retaining an in-between frame.
+        window.MinHeight = Math.Min(window.MinHeight, state.Minimum); window.Height = state.Height; window.MinHeight = state.Minimum;
     }
     public static void ButtonFeedback(object sender, bool pressed)
     {

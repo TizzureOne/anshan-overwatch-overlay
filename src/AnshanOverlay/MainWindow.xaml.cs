@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     private HeroDragPreviewWindow? dragPreview;
     public bool IsFolded { get; private set; }
     public const double FoldedHeight = 110;
-    public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? (double)GetAnimationBaseValue(HeightProperty) : RestoreBounds.Height);
+    public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? Motion.Height(this) : RestoreBounds.Height);
     public MainWindow(Controller controller)
     {
         this.controller = controller; InitializeComponent();
@@ -86,7 +86,7 @@ public partial class MainWindow : Window
     {
         if (IsFolded == folded) return;
         WindowState = WindowState.Normal;
-        if (folded) expandedHeight = (double)GetAnimationBaseValue(HeightProperty);
+        if (folded) expandedHeight = Motion.Height(this);
         IsFolded = folded;
         ExpandedPanel.Visibility = folded ? Visibility.Collapsed : Visibility.Visible;
         FoldedPanel.Visibility = folded ? Visibility.Visible : Visibility.Collapsed;

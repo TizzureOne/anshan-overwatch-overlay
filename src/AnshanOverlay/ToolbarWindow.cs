@@ -29,7 +29,7 @@ public sealed class ToolbarWindow : Window
     private readonly Button foldButton;
     private double expandedHeight;
     public bool IsFolded { get; private set; }
-    public double ExpandedHeight => IsFolded ? expandedHeight : (double)GetAnimationBaseValue(HeightProperty);
+    public double ExpandedHeight => IsFolded ? expandedHeight : Motion.Height(this);
     public ToolbarWindow(Controller controller)
     {
         this.controller = controller;
@@ -112,7 +112,7 @@ public sealed class ToolbarWindow : Window
     public void SetFolded(bool folded)
     {
         if (IsFolded == folded) return;
-        if (folded) expandedHeight = (double)GetAnimationBaseValue(HeightProperty);
+        if (folded) expandedHeight = Motion.Height(this);
         IsFolded = folded; toolContent.Visibility = folded ? Visibility.Collapsed : Visibility.Visible;
         foldButton.Content = folded ? "展开" : "折叠";
         Motion.Resize(this, folded ? 44 : expandedHeight, folded ? 44 : 150);

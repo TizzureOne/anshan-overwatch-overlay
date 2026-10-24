@@ -212,7 +212,9 @@ public sealed class Controller
             (Settings.AutomaticallyCheckUpdates, Settings.IncludeBetaUpdates, Settings.AnimateInterface) = before;
             return "设置未能保存，请检查文件权限后重试。";
         }
-        Motion.Enabled = !testMode && animations; Overlay.Refresh(); Notify(); return null;
+        Motion.Enabled = !testMode && animations;
+        if (!Motion.CanAnimate) { Motion.FinishResize(Panel); Motion.FinishResize(Toolbar); }
+        Overlay.Refresh(); Notify(); return null;
     }
     public void PrepareForUpdate()
     {
@@ -222,6 +224,7 @@ public sealed class Controller
     }
     private void SaveWindowSettings()
     {
+        Motion.FinishResize(Panel); Motion.FinishResize(Toolbar);
         Settings.PanelWidth = double.IsFinite(Panel.RestoreBounds.Width) ? Panel.RestoreBounds.Width : Panel.Width; Settings.PanelHeight = Panel.ExpandedHeight;
         Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight;
         Settings.PanelPosition = WindowLayout.Capture(Panel); Settings.ToolbarPosition = WindowLayout.Capture(Toolbar);
@@ -364,6 +367,7 @@ public sealed class Controller
     {
         if (IsClosing) return; IsClosing = true;
         Panel.StopUpdateChecks(); Panel.CancelHeroPreview();
+        Motion.FinishResize(Panel); Motion.FinishResize(Toolbar);
         Editor.Cancel(); publishTimer.Stop(); saveTimer.Stop(); if (!testMode) SaveAuto();
         var hwnd = new WindowInteropHelper(Panel).Handle;
         foreach (var id in hotkeys) Native.UnregisterHotKey(hwnd, id);

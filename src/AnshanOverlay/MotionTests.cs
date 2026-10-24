@@ -120,7 +120,15 @@ internal static class MotionTests
             panel.MainTabs.SelectedIndex = 1; await Capture("settings-page");
             double expanded = panel.ExpandedHeight; panel.SetFolded(true); await Task.Delay(45);
             check(!animated || panel.Height > MainWindow.FoldedHeight && panel.Height < expanded, "panel folding passes through intermediate window sizes");
-            panel.SetFolded(false); panel.SetFolded(true); panel.SetFolded(false); await Capture("rapid-fold-restore");
+            panel.SetFolded(false);
+            if (animated)
+            {
+                var panelHandle = new WindowInteropHelper(panel).Handle;
+                Native.GetWindowRect(panelHandle, out var rectangle);
+                Native.SetWindowPos(panelHandle, IntPtr.Zero, 0, 0, rectangle.Right - rectangle.Left, rectangle.Bottom - rectangle.Top - 5, 0x2 | 0x4 | 0x10);
+            }
+            check(panel.ExpandedHeight == expanded, "native in-between size messages cannot overwrite the persisted expanded height");
+            panel.SetFolded(true); panel.SetFolded(false); await Capture("rapid-fold-restore");
             await Settle(() => panel.Height == expanded && panel.MinHeight == 420);
             check(panel.Height == expanded && panel.ExpandedHeight == expanded && panel.MinHeight == 420, $"rapid fold reversals restore the intended full size and minimum height (actual={panel.Height:R}, saved={panel.ExpandedHeight:R}, target={expanded:R}, minimum={panel.MinHeight:R})");
             double toolbarExpanded = toolbar.ExpandedHeight; toolbar.SetFolded(true); toolbar.SetFolded(false); await Settle(() => toolbar.Height == toolbarExpanded && toolbar.MinHeight == 150);
