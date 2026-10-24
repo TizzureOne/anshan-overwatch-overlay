@@ -29,7 +29,7 @@ public sealed class ToolbarWindow : Window
     private readonly Button foldButton;
     private double expandedHeight;
     public bool IsFolded { get; private set; }
-    public double ExpandedHeight => IsFolded ? expandedHeight : Height;
+    public double ExpandedHeight => IsFolded ? expandedHeight : (double)GetAnimationBaseValue(HeightProperty);
     public ToolbarWindow(Controller controller)
     {
         this.controller = controller;
@@ -60,6 +60,7 @@ public sealed class ToolbarWindow : Window
         Grid.SetRow(toolContent, 1); shell.Children.Add(toolContent);
         Content = new Border { Background = Background, Child = shell, BorderBrush = BoardView.Brush("#FF9C27"), BorderThickness = new Thickness(0, 3, 0, 0) };
         Loaded += (_, _) => Motion.Reveal(toolContent);
+        IsVisibleChanged += (_, _) => { if (IsVisible) Motion.Reveal((FrameworkElement)Content, offset: 0); };
         var row = new WrapPanel();
         var grip = new TextBlock { Text = "⠿", Width = 16, VerticalAlignment = VerticalAlignment.Center, Foreground = BoardView.Brush("#67768A"), Cursor = Cursors.SizeAll, ToolTip = "空白处可拖动；Alt+拖动可从任意位置移动" };
         grip.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); }; row.Children.Add(grip);
@@ -111,10 +112,10 @@ public sealed class ToolbarWindow : Window
     public void SetFolded(bool folded)
     {
         if (IsFolded == folded) return;
-        if (folded) expandedHeight = Height;
+        if (folded) expandedHeight = (double)GetAnimationBaseValue(HeightProperty);
         IsFolded = folded; toolContent.Visibility = folded ? Visibility.Collapsed : Visibility.Visible;
         foldButton.Content = folded ? "展开" : "折叠";
-        MinHeight = folded ? 44 : 150; Height = folded ? 44 : expandedHeight;
+        Motion.Resize(this, folded ? 44 : expandedHeight, folded ? 44 : 150);
         ResizeMode = folded ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
         if (!folded) Motion.Reveal(toolContent);
     }
@@ -128,22 +129,22 @@ public sealed class ToolbarWindow : Window
         foreach (var (action, label) in shortcutLabels) label.Text = controller.BindingText(action);
         names.IsChecked = controller.Store.Current.ShowHeroNames; dashed.IsChecked = controller.Editor.Dashed;
         mode.Content = controller.PassThrough ? "↗" : "✎";
-        ModeStateText.Text = controller.PassThrough ? "● 穿透中" : "● 编辑中";
+        Motion.Text(ModeStateText, controller.PassThrough ? "● 穿透中" : "● 编辑中");
         ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
         ModeStateText.ToolTip = controller.ModeState + " · " + controller.ModeShortcut;
         mode.ToolTip = (controller.PassThrough ? "穿透中 · 点击进入编辑" : "编辑中 · 点击开启鼠标穿透") + " · " + controller.BindingText("edit");
-        mode.Background = BoardView.Brush(controller.PassThrough ? "#E5EAF0" : "#FF9C27");
-        pin.Background = BoardView.Brush(controller.AlwaysOnTop ? "#FFD18E" : "#E5EAF0");
-        visibility.Opacity = controller.Store.Current.Visible ? 1 : .45;
+        Motion.Paint(mode, BackgroundProperty, controller.PassThrough ? "#E5EAF0" : "#FF9C27");
+        Motion.Paint(pin, BackgroundProperty, controller.AlwaysOnTop ? "#FFD18E" : "#E5EAF0");
+        Motion.Fade(visibility, controller.Store.Current.Visible ? 1 : .45);
         foreach (var (tool, button) in tools)
         {
-            button.Background = BoardView.Brush(tool == controller.Editor.Tool ? "#FF9C27" : "#E5EAF0");
+            Motion.Paint(button, BackgroundProperty, tool == controller.Editor.Tool ? "#FF9C27" : "#E5EAF0");
             button.ToolTip = controller.BindingText(tool.ToString().ToLowerInvariant());
         }
         var selected = controller.Editor.Selected;
         string state = controller.Editor.Tool + (controller.Editor.Tool == EditorTool.Move ? $"/{controller.Editor.SelectedIds.Count}/{selected?.Id}/{selected?.Width}/{selected?.Opacity}/{selected?.Dashed}/{selected?.Size}" : controller.Editor.Tool == EditorTool.Hero ? $"/{controller.Editor.Team}" : "");
         if (shownState == state || changingParameter || adjusting) return;
-        shownState = state; BuildParameters();
+        shownState = state; BuildParameters(); Motion.Reveal(parameters);
     }
     private void BuildParameters()
     {
@@ -190,7 +191,7 @@ public sealed class ToolbarWindow : Window
             {
                 var button = new Button { Width = 21, Height = 21, Padding = new Thickness(0), Margin = new Thickness(0, 0, 6, 0), Background = BoardView.Brush(color), ToolTip = color,
                     BorderBrush = BoardView.Brush(profile.Color == color ? "#27374A" : "#C5CFDB"), BorderThickness = new Thickness(2) };
-                button.Click += (_, _) => { profile.Color = color; foreach (Button peer in parameters.Children.OfType<Button>()) peer.BorderBrush = BoardView.Brush(ReferenceEquals(peer, button) ? "#27374A" : "#C5CFDB"); }; parameters.Children.Add(button);
+                button.Click += (_, _) => { profile.Color = color; foreach (Button peer in parameters.Children.OfType<Button>()) Motion.Paint(peer, BorderBrushProperty, ReferenceEquals(peer, button) ? "#27374A" : "#C5CFDB"); }; parameters.Children.Add(button);
             }
             Slider("线宽", profile.Width, 2, 16, v => profile.Width = v);
         }

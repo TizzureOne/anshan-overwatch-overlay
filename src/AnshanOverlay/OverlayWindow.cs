@@ -98,24 +98,32 @@ public sealed class OverlayWindow : Window
     }
     public ContextMenu CreateHeroMenu(SceneItem hero)
     {
-        var menu = new ContextMenu { Background = BoardView.Brush("#F4F6F9"), Foreground = BoardView.Brush("#27374A"), BorderBrush = BoardView.Brush("#C5CFDB"), BorderThickness = new Thickness(1), FontFamily = new FontFamily("Microsoft YaHei UI") };
-        menu.Items.Add(new MenuItem { Header = controller.Heroes.Heroes.First(h => h.Id == hero.HeroId).Name, IsEnabled = false });
-        menu.Items.Add(new Separator());
+        var panel = new FrameworkElementFactory(typeof(WrapPanel)); panel.SetValue(WidthProperty, 238d);
+        var menu = new ContextMenu { Width = 264, FontFamily = new FontFamily("Microsoft YaHei UI"), ItemsPanel = new ItemsPanelTemplate(panel) };
+        var title = new StackPanel { Orientation = Orientation.Horizontal };
+        title.Children.Add(new Image { Source = Assets.Portrait(hero.HeroId), Width = 34, Height = 34, Margin = new Thickness(0, 0, 10, 0) });
+        var caption = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        caption.Children.Add(new TextBlock { Text = controller.Heroes.Heroes.First(h => h.Id == hero.HeroId).Name, FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = BoardView.Brush("#27374A") });
+        caption.Children.Add(new TextBlock { Text = "英雄标注", FontSize = 10, Foreground = BoardView.Brush("#67768A"), Margin = new Thickness(0, 2, 0, 0) }); title.Children.Add(caption);
+        void Section(object header) => menu.Items.Add(new MenuItem { Header = header, Width = 238, Style = (Style)FindResource("MenuSection") });
+        void Divider() => menu.Items.Add(new Separator { Width = 234, Height = 1, Margin = new Thickness(2, 5, 2, 5), Background = BoardView.Brush("#E4E8EE") });
+        Section(title); Divider();
+        Section(new TextBlock { Text = "阵营", FontSize = 10, Foreground = BoardView.Brush("#67768A") });
         // Keep choices in one popup so screen-edge placement never requires entering a flipped submenu.
         foreach (var (id, name, color) in new[] { ("ally", "友方 · 蓝色", "#39A9FF"), ("enemy", "敌方 · 红色", "#F05265") })
         {
-            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = hero.Team == id, Foreground = BoardView.Brush(color) };
+            var item = new MenuItem { Header = name, Width = 115, IsCheckable = true, IsChecked = hero.Team == id, Foreground = BoardView.Brush(color), Padding = new Thickness(7, 7, 7, 7) };
             item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Team = id }); menu.Items.Add(item);
         }
-        menu.Items.Add(new Separator());
-        menu.Items.Add(new MenuItem { Header = $"尺寸 · {hero.Size:0} px", IsEnabled = false });
+        Divider();
+        Section(new TextBlock { Text = $"尺寸 · 当前 {hero.Size:0} px", FontSize = 10, Foreground = BoardView.Brush("#67768A") });
         foreach (double size in new double[] { 40, 60, 80, 100, 120, 160 })
         {
-            var item = new MenuItem { Header = $"{size:0} px", IsCheckable = true, IsChecked = Math.Abs(hero.Size - size) < 0.1 };
+            var item = new MenuItem { Header = $"{size:0} px", Width = 75, FontSize = 11, Padding = new Thickness(6, 7, 6, 7), IsCheckable = true, IsChecked = Math.Abs(hero.Size - size) < 0.1 };
             item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Size = size }); menu.Items.Add(item);
         }
-        menu.Items.Add(new Separator());
-        var delete = new MenuItem { Header = "删除", Foreground = BoardView.Brush("#F05265") };
+        Divider();
+        var delete = new MenuItem { Header = "删除", Width = 234, Foreground = BoardView.Brush("#C64254") };
         delete.Click += (_, _) => controller.Store.Remove(hero.Id); menu.Items.Add(delete);
         return menu;
     }

@@ -9,13 +9,45 @@ namespace AnshanOverlay;
 
 public sealed class BoardView : FrameworkElement
 {
-    public Scene Scene { get; set; } = new();
-    public IReadOnlySet<string> SelectedIds { get; set; } = new HashSet<string>();
+    public static readonly DependencyProperty ModeOpacityProperty = Progress("ModeOpacity", .5);
+    public static readonly DependencyProperty VisibilityProgressProperty = Progress("VisibilityProgress", 1);
+    public static readonly DependencyProperty HeroProgressProperty = Progress("HeroProgress", 1);
+    public static readonly DependencyProperty SelectionProgressProperty = Progress("SelectionProgress", 1);
+    private static DependencyProperty Progress(string name, double value) => DependencyProperty.Register(name, typeof(double), typeof(BoardView), new FrameworkPropertyMetadata(value, FrameworkPropertyMetadataOptions.AffectsRender));
+    private Scene scene = new();
+    private IReadOnlySet<string> selectedIds = new HashSet<string>();
+    private HashSet<string> enteringHeroes = new();
+    private bool editing;
+    private double passThroughOpacity = .5;
+    public Scene Scene
+    {
+        get => scene;
+        set
+        {
+            if (Motion.CanAnimate && IsLoaded && DrawEditorChrome && value.Visible)
+            {
+                var added = value.Items.Where(i => i.Kind == "hero").Select(i => i.Id).Except(scene.Items.Select(i => i.Id)).ToHashSet();
+                if (added.Count > 0) { enteringHeroes = added; Motion.Start(this, HeroProgressProperty, 0); }
+            }
+            if (!Motion.CanAnimate) { enteringHeroes.Clear(); BeginAnimation(HeroProgressProperty, null); BeginAnimation(SelectionProgressProperty, null); }
+            scene = value; Motion.To(this, VisibilityProgressProperty, value.Visible ? 1 : 0);
+        }
+    }
+    public IReadOnlySet<string> SelectedIds
+    {
+        get => selectedIds;
+        set
+        {
+            if (selectedIds.SetEquals(value)) return;
+            selectedIds = new HashSet<string>(value);
+            if (value.Count > 0) Motion.Start(this, SelectionProgressProperty, 0);
+        }
+    }
     public Rect? SelectionBox { get; set; }
     public string? DraggedHeroId { get; set; }
-    public bool Editing { get; set; }
+    public bool Editing { get => editing; set { editing = value; Motion.To(this, ModeOpacityProperty, value ? 1 : PassThroughOpacity); } }
     public bool DrawEditorChrome { get; set; } = true;
-    public double PassThroughOpacity { get; set; } = .5;
+    public double PassThroughOpacity { get => passThroughOpacity; set { passThroughOpacity = value; Motion.To(this, ModeOpacityProperty, Editing ? 1 : value); } }
     public string ModeHint { get; set; } = "";
     public Point? EraserPosition { get; set; }
     public double EraserRadius { get; set; }
@@ -31,11 +63,16 @@ public sealed class BoardView : FrameworkElement
         // pixels through even when WPF's logical hit test would hit the canvas.
         if (Editing && DrawEditorChrome)
             dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(1, 0, 0, 0)), null, new Rect(0, 0, ActualWidth, ActualHeight));
-        if (!Scene.Visible) return;
-        double modeOpacity = DrawEditorChrome && !Editing ? PassThroughOpacity : 1;
+        double sceneOpacity = DrawEditorChrome ? (double)GetValue(VisibilityProgressProperty) : Scene.Visible ? 1 : 0;
+        if (sceneOpacity <= 0) return;
+        double modeOpacity = DrawEditorChrome ? (double)GetValue(ModeOpacityProperty) : 1;
+        double selectionProgress = (double)GetValue(SelectionProgressProperty);
         foreach (var item in Scene.Items)
         {
-            dc.PushOpacity(item.Opacity * modeOpacity * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
+            bool entering = DrawEditorChrome && item.Kind == "hero" && enteringHeroes.Contains(item.Id);
+            double progress = entering ? (double)GetValue(HeroProgressProperty) : 1;
+            dc.PushOpacity(item.Opacity * modeOpacity * sceneOpacity * (.45 + .55 * progress) * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
+            if (entering) dc.PushTransform(new ScaleTransform(.88 + .12 * progress, .88 + .12 * progress, item.X, item.Y));
             if (item.Erasures.Count > 0) dc.PushClip(Geometry.Combine(new RectangleGeometry(new Rect(0, 0, Scene.Width, Scene.Height)), Editor.ErasedArea(item), GeometryCombineMode.Exclude, null));
             var color = Brush(item.Kind == "hero" ? item.HeroBorder : item.Color);
             if (item.Kind == "hero")
@@ -61,11 +98,12 @@ public sealed class BoardView : FrameworkElement
             }
             else if (item.Kind == "line") DrawLine(dc, item, color);
             if (item.Erasures.Count > 0) dc.Pop();
+            if (entering) dc.Pop();
             dc.Pop();
             if (DrawEditorChrome && Editing && SelectedIds.Contains(item.Id))
             {
                 if (item.Kind == "hero")
-                    dc.DrawEllipse(null, new Pen(Brushes.White, 2) { DashStyle = DashStyles.Dash }, item.Start, item.Size / 2 + 9, item.Size / 2 + 9);
+                    dc.DrawEllipse(null, new Pen(Brushes.White, 2) { DashStyle = DashStyles.Dash }, item.Start, item.Size / 2 + 9 + 5 * (1 - selectionProgress), item.Size / 2 + 9 + 5 * (1 - selectionProgress));
                 else if (SelectedIds.Count == 1)
                     foreach (var p in new[] { item.Start, item.End }) dc.DrawEllipse(Brushes.White, new Pen(color, 2), p, 6, 6);
                 else

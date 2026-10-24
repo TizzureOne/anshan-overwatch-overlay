@@ -35,6 +35,7 @@ public sealed class HeroDragPreviewWindow : Window
         new WindowInteropHelper(this).EnsureHandle();
         lastCursor = null; FollowCursor(); Show();
         Native.SetPassThrough(handle, true);
+        Motion.Reveal(preview, offset: 0);
         lastCursor = null; FollowCursor(); timer.Start();
     }
     public void End() { timer.Stop(); Hide(); lastCursor = null; }

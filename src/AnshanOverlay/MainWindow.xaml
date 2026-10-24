@@ -4,25 +4,25 @@
  Style="{StaticResource {x:Type Window}}" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Grayscale">
  <WindowChrome.WindowChrome><WindowChrome CaptionHeight="0" ResizeBorderThickness="8" GlassFrameThickness="0" CornerRadius="0"/></WindowChrome.WindowChrome>
  <Window.Resources>
-  <Style x:Key="RoleButton" TargetType="RadioButton">
-   <Setter Property="Foreground" Value="#27374A"/><Setter Property="Background" Value="#E5EAF0"/>
+  <Style x:Key="RoleButton" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+   <Setter Property="Foreground" Value="#67768A"/><Setter Property="Background" Value="#FFFFFF"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
-    <Border x:Name="Shell" Background="{TemplateBinding Background}" BorderBrush="#C5CFDB" BorderThickness="1" Padding="8" Margin="0,0,4,0">
+    <Border x:Name="Shell" Background="{TemplateBinding Background}" BorderBrush="#D8DEE8" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,4,0">
      <ContentPresenter HorizontalAlignment="Center"/>
     </Border>
-    <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="#27374A"/><Setter TargetName="Shell" Property="BorderBrush" Value="#FF9C27"/><Setter TargetName="Shell" Property="Background" Value="#FF9C27"/></Trigger></ControlTemplate.Triggers>
+    <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="#9E5900"/><Setter Property="FontWeight" Value="SemiBold"/><Setter TargetName="Shell" Property="BorderBrush" Value="#E9AF64"/><Setter TargetName="Shell" Property="Background" Value="#FFF0DE"/></Trigger></ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
  </Window.Resources>
  <Grid Background="#F4F6F9">
- <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1" Padding="18,64,18,10">
+ <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#D8DEE8" BorderThickness="1" Padding="18,64,18,10">
   <Grid><TextBlock x:Name="FoldedModeText" FontSize="11" Margin="0,0,85,0" VerticalAlignment="Center"/>
    <Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" FontSize="11" Height="28" Padding="7,4" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
  </Border>
- <Border x:Name="ExpandedPanel" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1"><Grid Margin="18,14,18,14">
+ <Border x:Name="ExpandedPanel" BorderBrush="#D8DEE8" BorderThickness="1"><Grid Margin="18,14,18,14">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Border Height="63"/>
-  <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="2" Padding="12" Margin="0,0,0,12">
+  <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="#E4E8EE" BorderThickness="1" CornerRadius="9" Padding="12" Margin="0,0,0,12">
    <StackPanel>
     <TextBlock x:Name="ModeStateText" FontWeight="Bold" FontSize="12" Margin="0,0,0,8"/>
     <Button x:Name="ModeButton" Click="ModeClick" Padding="12,10" HorizontalContentAlignment="Stretch" Background="#FF9C27" BorderBrush="#FF9C27"><TextBlock x:Name="ModeText" FontWeight="Bold" FontSize="15"/></Button>
@@ -67,7 +67,7 @@
      <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
       <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
        <ItemsControl.ItemTemplate><DataTemplate>
-        <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="84" Tag="{Binding}" Margin="2,2,4,5" Padding="3,9" Background="#E5EAF0" BorderBrush="#C5CFDB" ToolTip="{Binding EnglishName}">
+        <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="84" Tag="{Binding}" Margin="2,2,4,5" Padding="3,9" Background="#FFFFFF" BorderBrush="#D8DEE8" ToolTip="{Binding EnglishName}">
          <StackPanel><Image Source="{Binding Portrait}" Width="58" Height="58" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" MaxWidth="86"/></StackPanel>
         </Button>
        </DataTemplate></ItemsControl.ItemTemplate>

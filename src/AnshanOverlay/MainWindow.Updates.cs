@@ -33,18 +33,22 @@ public partial class MainWindow
         CheckUpdateButton.IsEnabled = AutomaticUpdates.IsEnabled = BetaUpdates.IsEnabled = !busy;
         InstallUpdateButton.IsEnabled = !busy && availableUpdate is not null;
         CancelUpdateButton.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        UpdateProgress.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, null);
+        UpdateProgress.Value = 0; UpdateProgress.IsIndeterminate = busy && Motion.CanAnimate;
+        UpdateProgress.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        if (busy) { Motion.Reveal(UpdateProgress, offset: 0); Motion.Reveal(CancelUpdateButton, offset: 0); }
     }
     public async Task CheckForUpdatesAsync()
     {
         if (updateBusy || controller.IsClosing) return;
-        updateCancellation = new CancellationTokenSource(); SetUpdateBusy(true); UpdateStateText.Text = "正在检查更新…";
+        updateCancellation = new CancellationTokenSource(); SetUpdateBusy(true); Motion.Text(UpdateStateText, "正在检查更新…");
         try
         {
             ShowAvailableUpdate(await updates.CheckAsync(BuildInfo.Version, controller.Settings.IncludeBetaUpdates, BuildInfo.Edition, updateCancellation.Token));
         }
-        catch (OperationCanceledException) { UpdateStateText.Text = updateCancellation.IsCancellationRequested ? "已取消检查。" : "检查超时，请稍后重试或打开下载页。"; }
+        catch (OperationCanceledException) { Motion.Text(UpdateStateText, updateCancellation.IsCancellationRequested ? "已取消检查。" : "检查超时，请稍后重试或打开下载页。"); }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidDataException or InvalidOperationException or System.Collections.Generic.KeyNotFoundException)
-        { UpdateStateText.Text = "暂时无法检查更新，请稍后重试或打开下载页。"; }
+        { Motion.Text(UpdateStateText, "暂时无法检查更新，请稍后重试或打开下载页。"); }
         finally { SetUpdateBusy(false); updateCancellation.Dispose(); updateCancellation = null; }
     }
     internal void ShowAvailableUpdate(UpdateRelease? release)
@@ -54,7 +58,7 @@ public partial class MainWindow
         UpdateNotes.Text = release?.Notes ?? "";
         UpdateNotice.Visibility = release is null ? Visibility.Collapsed : Visibility.Visible;
         UpdateNoticeText.Text = release is null ? "" : "发现新版本 " + release.Version + " · 查看更新";
-        UpdateStateText.Text = release is null ? "暂无可用更新 · " + DateTime.Now.ToString("HH:mm") + " 已检查" : "有新版本，可查看说明后更新。";
+        Motion.Text(UpdateStateText, release is null ? "暂无可用更新 · " + DateTime.Now.ToString("HH:mm") + " 已检查" : "有新版本，可查看说明后更新。");
         InstallUpdateButton.IsEnabled = !updateBusy && release is not null;
         if (release is not null) Motion.Reveal(UpdateNotice);
     }
@@ -78,6 +82,7 @@ public partial class MainWindow
             AnimateUi.IsChecked = controller.Settings.AnimateInterface;
             ready = true; UpdateStateText.Text = error; return;
         }
+        if (!Motion.CanAnimate) { UpdateProgress.IsIndeterminate = false; UpdateProgress.BeginAnimation(System.Windows.Controls.Primitives.RangeBase.ValueProperty, null); }
         if (!updateChecksStarted) return;
         if (controller.Settings.AutomaticallyCheckUpdates) updateTimer.Start(); else updateTimer.Stop();
         if (sender == BetaUpdates) { ShowAvailableUpdate(null); UpdateStateText.Text = "更新范围已更改，请检查更新。"; }
@@ -86,32 +91,36 @@ public partial class MainWindow
     private async void InstallUpdateClick(object sender, RoutedEventArgs e)
     {
         if (availableUpdate is not { } release || updateBusy) return;
-        updateCancellation = new CancellationTokenSource(); SetUpdateBusy(true); UpdateProgress.Value = 0; UpdateProgress.Visibility = Visibility.Visible;
-        UpdateStateText.Text = "正在下载更新…";
+        updateCancellation = new CancellationTokenSource(); SetUpdateBusy(true); UpdateProgress.IsIndeterminate = false;
+        Motion.Text(UpdateStateText, "正在下载更新…");
         try
         {
             string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "Updates", Guid.NewGuid().ToString("N"));
-            string installer = await updates.DownloadAsync(release, directory, new Progress<int>(value => { UpdateProgress.Value = value; UpdateStateText.Text = $"正在下载更新 · {value}%"; }), updateCancellation.Token);
+            string installer = await updates.DownloadAsync(release, directory, new Progress<int>(value => { Motion.To(UpdateProgress, System.Windows.Controls.Primitives.RangeBase.ValueProperty, value, 120); UpdateStateText.Text = $"正在下载更新 · {value}%"; }), updateCancellation.Token);
             updateCancellation.Token.ThrowIfCancellationRequested();
             controller.PrepareForUpdate();
             var command = AppUpdates.InstallerCommand(installer, release, AppContext.BaseDirectory, Environment.ProcessId);
             using var process = Process.Start(command) ?? throw new InvalidOperationException("Updater did not start");
-            UpdateStateText.Text = "已保存场景，正在退出并安装更新…"; controller.Close();
+            Motion.Text(UpdateStateText, "已保存场景，正在退出并安装更新…"); controller.Close();
         }
-        catch (OperationCanceledException) { UpdateStateText.Text = "已取消下载，当前版本可继续使用。"; }
-        catch (InvalidDataException) { UpdateStateText.Text = "安装包校验未通过，请重试下载或打开下载页。"; }
+        catch (OperationCanceledException) { Motion.Text(UpdateStateText, "已取消下载，当前版本可继续使用。"); }
+        catch (InvalidDataException) { Motion.Text(UpdateStateText, "安装包校验未通过，请重试下载或打开下载页。"); }
         catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
-        { UpdateStateText.Text = "更新尚未开始，请检查网络、保存位置权限后重试，或打开下载页。"; }
+        { Motion.Text(UpdateStateText, "更新尚未开始，请检查网络、保存位置权限后重试，或打开下载页。"); }
         finally { SetUpdateBusy(false); UpdateProgress.Visibility = Visibility.Collapsed; updateCancellation?.Dispose(); updateCancellation = null; }
     }
     public void ShowUpdateResult(int exitCode, string targetVersion)
     {
         MainTabs.SelectedItem = UpdatesTab;
-        UpdateStateText.Text = exitCode == 0 && BuildInfo.Version == targetVersion ? "更新完成 · 当前版本 " + BuildInfo.Version : "更新未完成 · 当前仍为 " + BuildInfo.Version + "，可重试或打开下载页。";
+        Motion.Text(UpdateStateText, exitCode == 0 && BuildInfo.Version == targetVersion ? "更新完成 · 当前版本 " + BuildInfo.Version : "更新未完成 · 当前仍为 " + BuildInfo.Version + "，可重试或打开下载页。");
     }
     private void TabChanged(object sender, SelectionChangedEventArgs e)
     {
         if (!ready || e.Source != MainTabs) return;
-        Dispatcher.BeginInvoke(new Action(() => { if (MainTabs.SelectedContent is FrameworkElement content) Motion.Reveal(content); }), DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (MainTabs.SelectedContent is FrameworkElement content) Motion.Reveal(content, offset: 0);
+            if (MainTabs.SelectedItem is TabItem tab && tab.Template.FindName("Indicator", tab) is FrameworkElement indicator) Motion.Start(indicator, WidthProperty, 6, 150);
+        }), DispatcherPriority.Loaded);
     }
 }

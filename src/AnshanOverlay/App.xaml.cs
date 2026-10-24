@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 
 namespace AnshanOverlay;
 
@@ -33,4 +35,22 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e) { singleInstance?.Dispose(); base.OnExit(e); }
     private void ButtonHover(object sender, MouseEventArgs e) => Motion.ButtonFeedback(sender, false);
     private void ButtonPress(object sender, MouseButtonEventArgs e) => Motion.ButtonFeedback(sender, true);
+    private void ButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.Template.FindName("Bd", button) is FrameworkElement face) Motion.Pulse(face);
+    }
+    private void ToggleFeedback(object sender, RoutedEventArgs e) { if (sender is FrameworkElement element) Motion.Pulse(element); }
+    private void InputFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (sender is Control input) Motion.Paint(input, Control.BorderBrushProperty, input.IsKeyboardFocusWithin ? "#FF9C27" : "#C5CFDB");
+    }
+    private void PopupFeedback(object sender, RoutedEventArgs e) { if (sender is FrameworkElement popup) Motion.Reveal(popup, offset: 3); }
+    private void ComboOpened(object? sender, EventArgs e)
+    {
+        if (sender is ComboBox box && box.Template.FindName("PART_Popup", box) is Popup { Child: FrameworkElement content }) Motion.Reveal(content, offset: 3);
+    }
+    private void ComboLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is ComboBox box) { box.DropDownOpened -= ComboOpened; box.DropDownOpened += ComboOpened; }
+    }
 }

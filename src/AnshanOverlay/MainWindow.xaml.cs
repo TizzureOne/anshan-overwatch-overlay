@@ -22,7 +22,7 @@ public partial class MainWindow : Window
     private HeroDragPreviewWindow? dragPreview;
     public bool IsFolded { get; private set; }
     public const double FoldedHeight = 110;
-    public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? Height : RestoreBounds.Height);
+    public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? (double)GetAnimationBaseValue(HeightProperty) : RestoreBounds.Height);
     public MainWindow(Controller controller)
     {
         this.controller = controller; InitializeComponent();
@@ -31,6 +31,7 @@ public partial class MainWindow : Window
         AutomaticUpdates.IsChecked = controller.Settings.AutomaticallyCheckUpdates; BetaUpdates.IsChecked = controller.Settings.IncludeBetaUpdates; AnimateUi.IsChecked = controller.Settings.AnimateInterface;
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         Loaded += (_, _) => Motion.Reveal(ExpandedPanel);
+        IsVisibleChanged += (_, _) => { if (IsVisible) Motion.Reveal((FrameworkElement)Content, offset: 0); };
         Width = Math.Min(controller.Settings.PanelWidth, SystemParameters.WorkArea.Width - 24);
         Height = Math.Min(controller.Settings.PanelHeight, SystemParameters.WorkArea.Height - 24);
         WindowLayout.Restore(this, controller.Settings.PanelPosition);
@@ -52,24 +53,27 @@ public partial class MainWindow : Window
     {
         if (!ready) return;
         ModeText.Text = (controller.PassThrough ? "进入编辑" : "鼠标穿透") + "  ·  " + controller.BindingText("edit");
-        if (ModeStateText.Text != controller.ModeState) { ModeStateText.Text = controller.ModeState; Motion.Reveal(ModeStateText); }
+        Motion.Text(ModeStateText, controller.ModeState);
         ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
-        FoldedModeText.Text = (controller.PassThrough ? "穿透中" : "编辑中") + " · " + controller.BindingText("edit");
+        Motion.Text(FoldedModeText, (controller.PassThrough ? "穿透中" : "编辑中") + " · " + controller.BindingText("edit"));
         FoldedModeText.Foreground = ModeStateText.Foreground;
         ModeStateText.ToolTip = FoldedModeText.ToolTip = controller.ModeShortcut;
         ShortcutHelp.Text = string.Join("\n", Preferences.Actions.Select(a => $"{controller.BindingText(a.Id)}    {a.Label}"));
-        ModeButton.Background = BoardView.Brush(controller.PassThrough ? "#FF9C27" : "#FFD18E");
+        Motion.Paint(ModeButton, BackgroundProperty, controller.PassThrough ? "#FF9C27" : "#FFD18E");
+        Motion.Paint(TopmostButton, BackgroundProperty, controller.AlwaysOnTop ? "#FFE1B8" : "#E5EAF0");
+        Motion.Paint(VisibleButton, BackgroundProperty, controller.Store.Current.Visible ? "#FFFFFF" : "#E4E8EE");
         TopmostButton.Content = controller.AlwaysOnTop ? "●  画布置顶" : "○  画布未置顶";
         VisibleButton.Content = controller.Store.Current.Visible ? "●  标注可见" : "○  标注已隐藏";
-        StatusText.Text = controller.Status;
+        Motion.Text(StatusText, controller.Status);
         HotkeyWarningText.Text = controller.HotkeyWarning;
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         PassThroughOpacityText.Text = controller.Settings.PassThroughOpacityPercent + "%";
-        ObjectCount.Text = $"{controller.Store.Current.Items.Count(i => i.Kind == "hero")} 个英雄  /  {controller.Store.Current.Items.Count(i => i.Kind != "hero")} 个标注";
+        Motion.Text(ObjectCount, $"{controller.Store.Current.Items.Count(i => i.Kind == "hero")} 个英雄  /  {controller.Store.Current.Items.Count(i => i.Kind != "hero")} 个标注");
         UndoButton.IsEnabled = controller.Store.CanUndo; RedoButton.IsEnabled = controller.Store.CanRedo;
         ObsUrl.Text = controller.Server.Port == 0 ? "OBS 服务未启动" : controller.Server.Url;
         ObsSize.Text = $"宽度 {controller.Store.Current.Width:0}   /   高度 {controller.Store.Current.Height:0}";
         BlueTeam.IsChecked = controller.Editor.Team == "ally"; RedTeam.IsChecked = controller.Editor.Team == "enemy";
+        RefreshHeroButtons();
     }
     private void FilterHeroes()
     {
@@ -82,12 +86,11 @@ public partial class MainWindow : Window
     {
         if (IsFolded == folded) return;
         WindowState = WindowState.Normal;
-        if (folded) expandedHeight = Height;
+        if (folded) expandedHeight = (double)GetAnimationBaseValue(HeightProperty);
         IsFolded = folded;
         ExpandedPanel.Visibility = folded ? Visibility.Collapsed : Visibility.Visible;
         FoldedPanel.Visibility = folded ? Visibility.Visible : Visibility.Collapsed;
-        MinHeight = folded ? FoldedHeight : 420;
-        Height = folded ? FoldedHeight : expandedHeight;
+        Motion.Resize(this, folded ? FoldedHeight : expandedHeight, folded ? FoldedHeight : 420);
         ResizeMode = folded ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
         Motion.Reveal(folded ? FoldedPanel : ExpandedPanel);
     }
@@ -133,17 +136,24 @@ public partial class MainWindow : Window
     }
     private void UpdateBatchControls()
     {
+        bool reveal = BatchActions.Visibility != Visibility.Visible && BatchMode.IsChecked == true;
         BatchActions.Visibility = BatchMode.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        BatchHint.Text = batchHeroes.Count == 0 ? "点击英雄加入列表，再点一次取消；可切换职责继续选择。" : $"已选 {batchHeroes.Count} 位：" + string.Join("、", batchHeroes.Select(h => h.Name));
+        if (reveal) Motion.Reveal(BatchActions);
+        Motion.Text(BatchHint, batchHeroes.Count == 0 ? "点击英雄加入列表，再点一次取消；可切换职责继续选择。" : $"已选 {batchHeroes.Count} 位：" + string.Join("、", batchHeroes.Select(h => h.Name)));
         AddHeroesButton.Content = batchHeroes.Count == 0 ? "添加英雄" : $"添加 {batchHeroes.Count} 位英雄";
         AddHeroesButton.IsEnabled = batchHeroes.Count > 0;
     }
-    private void HeroButtonLoaded(object s, RoutedEventArgs e) => RefreshHeroButton((Button)s);
+    private void HeroButtonLoaded(object s, RoutedEventArgs e)
+    {
+        var button = (Button)s; RefreshHeroButton(button);
+        Motion.Reveal(button, Math.Min(HeroList.Items.IndexOf(button.Tag), 5) * 12);
+    }
     private void RefreshHeroButton(Button button)
     {
-        bool selected = batchHeroes.Any(h => h.Id == ((Hero)button.Tag).Id);
-        button.Background = BoardView.Brush(selected ? "#FFE1B8" : "#E5EAF0");
-        button.BorderBrush = BoardView.Brush(selected ? "#FF9C27" : "#C5CFDB");
+        string id = ((Hero)button.Tag).Id;
+        bool selected = BatchMode.IsChecked == true ? batchHeroes.Any(h => h.Id == id) : controller.Editor.Tool == EditorTool.Hero && controller.Editor.PendingHero?.Id == id;
+        Motion.Paint(button, BackgroundProperty, selected ? "#FFF0DE" : "#FFFFFF");
+        Motion.Paint(button, BorderBrushProperty, selected ? "#E9AF64" : "#D8DEE8");
         button.BorderThickness = new Thickness(selected ? 2 : 1);
     }
     private void RefreshHeroButtons()

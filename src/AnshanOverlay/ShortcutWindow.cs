@@ -15,6 +15,7 @@ public sealed class ShortcutWindow : Window
         Icon = Assets.AppIcon;
         var bindings = new Dictionary<string, Shortcut>(controller.Settings.Shortcuts);
         var root = new DockPanel { Margin = new Thickness(18) }; Content = root;
+        Loaded += (_, _) => Motion.Reveal(root);
         var hint = new TextBlock { Text = "点击输入框后按下组合键。全局快捷键在其他应用中也有效；编辑快捷键仅在本工具获得焦点时生效。", Margin = new Thickness(0, 0, 0, 12) };
         DockPanel.SetDock(hint, Dock.Top); root.Children.Add(hint);
         var bottom = new StackPanel(); DockPanel.SetDock(bottom, Dock.Bottom); root.Children.Add(bottom);

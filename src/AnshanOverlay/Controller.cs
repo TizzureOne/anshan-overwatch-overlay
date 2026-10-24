@@ -107,7 +107,7 @@ public sealed class Controller
         }
         if (enabled) Panel.CancelHeroPreview();
         PassThrough = enabled; Overlay.SetPassThrough(enabled);
-        if (enabled && previousWindow != IntPtr.Zero && Native.IsWindow(previousWindow)) Native.SetForegroundWindow(previousWindow);
+        if (enabled && !testMode && previousWindow != IntPtr.Zero && Native.IsWindow(previousWindow)) Native.SetForegroundWindow(previousWindow);
         if (!enabled && !testMode) { Overlay.Activate(); RaisePanel(); }
         SetStatus(enabled ? $"鼠标穿透中 · {BindingText("edit")} 恢复编辑。" : $"编辑中 · 拖动头像或绘制；{BindingText("edit")} 返回游戏。");
     }
@@ -212,7 +212,7 @@ public sealed class Controller
             (Settings.AutomaticallyCheckUpdates, Settings.IncludeBetaUpdates, Settings.AnimateInterface) = before;
             return "设置未能保存，请检查文件权限后重试。";
         }
-        Motion.Enabled = !testMode && animations; return null;
+        Motion.Enabled = !testMode && animations; Overlay.Refresh(); Notify(); return null;
     }
     public void PrepareForUpdate()
     {

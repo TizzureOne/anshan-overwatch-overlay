@@ -2,7 +2,7 @@
 
 用于《守望先锋》教学的 Windows 桌面标注工具。拖放英雄头像、绘制战术路线，通过 OBS 输出透明标注。
 
-当前版本：**0.1.7-beta（测试版）**。
+当前版本：**0.1.8-beta（测试版）**。
 
 ## 下载
 
@@ -57,7 +57,9 @@
 
 Beta 默认接收测试版更新，可取消勾选以只接收正式版。网络不可用时可继续使用当前版本，也可打开下载页手动安装。
 
-按钮反馈、面板展开和页面切换加入短时动效，参考 [Microsoft Fluent 2](https://fluent2.microsoft.design/motion)。可在“更新”页关闭，也会遵循 Windows 的动画设置。动效及编辑状态提示不进入 OBS 浏览器源。
+界面参考 [Microsoft Fluent 2](https://fluent2.microsoft.design/motion) 与 [Windows 菜单规范](https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/menus)，统一按钮、英雄卡片、选项、滑块、下拉框和提示框。英雄右键菜单按身份、阵营、尺寸和删除分组，阵营与尺寸直接点选。
+
+按钮按压、英雄筛选与入场、批量选择、工具与参数切换、折叠展开、菜单、状态提示和更新进度加入短时动效。模式与标注显隐平滑过渡，拖动、画线和滑块实时更新，鼠标穿透立即生效。可在“更新”页关闭动效，也会遵循 Windows 的动画设置。动效不写入场景，不进入 OBS 浏览器源。
 
 ## OBS
 

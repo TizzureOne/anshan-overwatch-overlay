@@ -427,10 +427,10 @@ public static class SelfTests
         Check(controller.ApplyShortcuts(settings.Shortcuts) is null && controller.BindingText("brush") == "Ctrl+F8", "custom shortcuts applied and hints refreshed");
         var heroMenu = controller.Overlay.CreateHeroMenu(store.Current.Items[0]);
         Check(heroMenu.Items.OfType<System.Windows.Controls.MenuItem>().All(i => !i.HasItems), "hero menu keeps all actions in one popup at screen edges");
-        heroMenu.Measure(new Size(220, double.PositiveInfinity));
+        heroMenu.Measure(new Size(264, double.PositiveInfinity));
         int heroMenuHeight = (int)Math.Ceiling(heroMenu.DesiredSize.Height);
         Check(heroMenuHeight < 320, "hero menu fits on a small display without a secondary popup");
-        Render(heroMenu, 220, heroMenuHeight, Path.Combine(output, "hero-context-menu.png"));
+        Render(heroMenu, 264, heroMenuHeight, Path.Combine(output, "hero-context-menu.png"));
         var beforeMenu = controller.Store.Current;
         var beforeMenuSelection = controller.Editor.SelectedId;
         foreach (var position in new[] { new Point(1880, 60), new Point(40, 60), new Point(960, 1040) })
@@ -519,7 +519,7 @@ public static class SelfTests
         Check(controller.Panel.AddHeroesButton.ActualWidth > 120 && new Rect(0, 0, panelControl.Width, panelControl.Height).Contains(batchBounds), "batch controls remain usable and fully visible in the narrow hero panel");
         controller.Panel.BatchMode.IsChecked = false; panelControl.Width = 474; panelControl.Height = 900;
         Render(panelPreview, 474, 900, Path.Combine(output, "control-panel.png"));
-        Check(controller.Panel.ModeButton.ActualHeight < 60 && controller.Panel.SearchBox.ActualHeight < 50, "armor decorations do not inflate layout");
+        Check(controller.Panel.ModeButton.ActualHeight < 60 && controller.Panel.SearchBox.ActualHeight < 50, "restyled controls retain compact input and action heights");
         var tabs = FindChild<System.Windows.Controls.TabControl>(panelContent)!;
         tabs.SelectedIndex = 1;
         Render(panelPreview, 474, 900, Path.Combine(output, "settings-panel.png"));
@@ -671,6 +671,9 @@ public static class SelfTests
         var rb = new byte[65536]; var rr = await reconnect.ReceiveAsync(new ArraySegment<byte>(rb), timeout.Token);
         Check(Encoding.UTF8.GetString(rb, 0, rr.Count).Contains("\"visible\":false"), "OBS reconnect restores latest state");
         await reconnect.CloseAsync(WebSocketCloseStatus.NormalClosure, "test", timeout.Token);
+        panelControl.Content = null; controller.Panel.Content = panelContent;
+        toolbarPreview.Child = null; controller.Toolbar.Content = toolbarContent;
+        await MotionTests.RunAsync(controller, Check, output);
         File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, heroes = manifest.Count, serverPort = server.Port, utc = DateTime.UtcNow, renderTier = RenderCapability.Tier >> 16 }, new JsonSerializerOptions { WriteIndented = true }));
     }
     private static bool IsAbove(IntPtr window, IntPtr other)
