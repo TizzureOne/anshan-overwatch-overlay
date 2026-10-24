@@ -4,6 +4,7 @@ $projectRoot = Split-Path $PSScriptRoot -Parent
 $project = Join-Path $projectRoot 'src/AnshanOverlay/AnshanOverlay.csproj'
 $version = ([xml](Get-Content -LiteralPath $project -Raw)).Project.PropertyGroup.Version
 $suffix = if ($Lite) { '-Lite' } else { '' }
+$edition = if ($Lite) { 'Lite' } else { 'Full' }
 $destination = Join-Path $projectRoot "dist/AnshanOverlay-$version$suffix-win-x64"
 if (!$CompilerPath) {
     $CompilerPath = @(
@@ -18,7 +19,7 @@ $publishOptions = if ($Lite) {
 } else {
     @('--self-contained', 'true', "-p:RuntimeFrameworkVersion=$RuntimeVersion", '-p:PublishSingleFile=true', '-p:IncludeNativeLibrariesForSelfExtract=true', '-p:EnableCompressionInSingleFile=true')
 }
-dotnet publish $project -c Release -r win-x64 @publishOptions -p:DebugType=None -p:DebugSymbols=false -o $destination --nologo
+dotnet publish $project -c Release -r win-x64 @publishOptions "-p:AnshanEdition=$edition" -p:DebugType=None -p:DebugSymbols=false -o $destination --nologo
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
 Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md') -Destination (Join-Path $destination '使用说明.md') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'THIRD-PARTY-NOTICES.md') -Destination $destination -Force

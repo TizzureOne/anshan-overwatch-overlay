@@ -13,6 +13,7 @@ public sealed class OverlayWindow : Window
 {
     public BoardView Board { get; }
     private readonly Controller controller;
+    private ContextMenu? heroMenu;
     public OverlayWindow(Controller controller)
     {
         this.controller = controller;
@@ -53,7 +54,8 @@ public sealed class OverlayWindow : Window
             if (hit is { Kind: "hero" })
             {
                 controller.Editor.SelectedId = hit.Id; Refresh(); controller.Notify();
-                var menu = CreateHeroMenu(hit); menu.PlacementTarget = Board; menu.Placement = PlacementMode.MousePoint; menu.IsOpen = true;
+                if (heroMenu is not null) heroMenu.IsOpen = false;
+                heroMenu = CreateHeroMenu(hit); heroMenu.PlacementTarget = Board; heroMenu.Placement = PlacementMode.MousePoint; heroMenu.IsOpen = true;
             }
             else { controller.Editor.PendingHero = null; controller.SetTool(EditorTool.Move); }
             e.Handled = true;
@@ -68,6 +70,7 @@ public sealed class OverlayWindow : Window
     {
         Board.Scene = controller.Store.Current; Board.Width = Board.Scene.Width; Board.Height = Board.Scene.Height;
         Board.SelectedIds = controller.Editor.SelectedIds; Board.SelectionBox = controller.Editor.SelectionBox; Board.Editing = !controller.PassThrough;
+        Board.ModeHint = controller.ModeState + " · " + controller.ModeShortcut;
         Board.DraggedHeroId = controller.Editor.IsMoving && controller.Editor.Selected?.Kind == "hero" ? controller.Editor.SelectedId : null;
         if (controller.Editor.Tool != EditorTool.Eraser || controller.PassThrough) Board.EraserPosition = null;
         Board.Cursor = controller.Editor.Tool is EditorTool.Hero or EditorTool.Move ? Cursors.Arrow : controller.Editor.Tool == EditorTool.Eraser ? Cursors.Cross : Cursors.Pen;
@@ -81,6 +84,7 @@ public sealed class OverlayWindow : Window
     public void SetPassThrough(bool enabled)
     {
         controller.Editor.Cancel(); Board.ReleaseMouseCapture();
+        if (enabled && heroMenu is not null) { heroMenu.IsOpen = false; heroMenu = null; }
         Native.SetPassThrough(new WindowInteropHelper(this).Handle, enabled);
         Refresh();
     }

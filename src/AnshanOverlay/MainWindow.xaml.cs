@@ -21,11 +21,15 @@ public partial class MainWindow : Window
     private double expandedHeight;
     private HeroDragPreviewWindow? dragPreview;
     public bool IsFolded { get; private set; }
-    public const double FoldedHeight = 92;
+    public const double FoldedHeight = 110;
     public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? Height : RestoreBounds.Height);
     public MainWindow(Controller controller)
     {
         this.controller = controller; InitializeComponent();
+        Title = "安山守望 · " + BuildInfo.Label; VersionText.Text = BuildInfo.Label;
+        CurrentVersionText.Text = "当前版本 " + BuildInfo.Version + " · " + BuildInfo.EditionName;
+        AutomaticUpdates.IsChecked = controller.Settings.AutomaticallyCheckUpdates; BetaUpdates.IsChecked = controller.Settings.IncludeBetaUpdates; AnimateUi.IsChecked = controller.Settings.AnimateInterface;
+        Loaded += (_, _) => Motion.Reveal(ExpandedPanel);
         Width = Math.Min(controller.Settings.PanelWidth, SystemParameters.WorkArea.Width - 24);
         Height = Math.Min(controller.Settings.PanelHeight, SystemParameters.WorkArea.Height - 24);
         Icon = Assets.AppIcon;
@@ -46,6 +50,11 @@ public partial class MainWindow : Window
     {
         if (!ready) return;
         ModeText.Text = (controller.PassThrough ? "进入编辑" : "鼠标穿透") + "  ·  " + controller.BindingText("edit");
+        if (ModeStateText.Text != controller.ModeState) { ModeStateText.Text = controller.ModeState; Motion.Reveal(ModeStateText); }
+        ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
+        FoldedModeText.Text = (controller.PassThrough ? "穿透中" : "编辑中") + " · " + controller.BindingText("edit");
+        FoldedModeText.Foreground = ModeStateText.Foreground;
+        ModeStateText.ToolTip = FoldedModeText.ToolTip = controller.ModeShortcut;
         ShortcutHelp.Text = string.Join("\n", Preferences.Actions.Select(a => $"{controller.BindingText(a.Id)}    {a.Label}"));
         ModeButton.Background = BoardView.Brush(controller.PassThrough ? "#FF9C27" : "#FFD18E");
         TopmostButton.Content = controller.AlwaysOnTop ? "●  画布置顶" : "○  画布未置顶";
@@ -76,6 +85,7 @@ public partial class MainWindow : Window
         MinHeight = folded ? FoldedHeight : 420;
         Height = folded ? FoldedHeight : expandedHeight;
         ResizeMode = folded ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
+        Motion.Reveal(folded ? FoldedPanel : ExpandedPanel);
     }
     public void ClosePanel() { dragPreview?.End(); Hide(); }
     private void FoldClick(object s, RoutedEventArgs e) => SetFolded(true);
@@ -140,6 +150,12 @@ public partial class MainWindow : Window
         batchHeroes.Clear(); UpdateBatchControls(); RefreshHeroButtons();
     }
     private void HeroDragStart(object s, MouseButtonEventArgs e) { heroDragOrigin = e.GetPosition(this); draggedHero = false; }
+    public void CancelHeroPreview() => dragPreview?.End();
+    public void FinishHeroDrag(bool wasPassThrough)
+    {
+        CancelHeroPreview();
+        if (wasPassThrough) controller.SetPassThrough(true);
+    }
     private void HeroDragMove(object s, MouseEventArgs e)
     {
         if (draggedHero || e.LeftButton != MouseButtonState.Pressed) return;
@@ -151,10 +167,9 @@ public partial class MainWindow : Window
         {
             dragPreview ??= new HeroDragPreviewWindow();
             dragPreview.Begin(hero.Id, controller.Editor.Size, controller.Editor.Team);
-            var result = DragDrop.DoDragDrop((Button)s, new DataObject("AnshanHero", hero.Id), DragDropEffects.Copy);
-            if (result == DragDropEffects.None && wasPassThrough) controller.SetPassThrough(true);
+            DragDrop.DoDragDrop((Button)s, new DataObject("AnshanHero", hero.Id), DragDropEffects.Copy);
         }
-        finally { dragPreview?.End(); e.Handled = true; }
+        finally { FinishHeroDrag(wasPassThrough); e.Handled = true; }
     }
     private void ShortcutsClick(object s, RoutedEventArgs e) => controller.ShowShortcuts();
     private void UndoClick(object s, RoutedEventArgs e) => controller.Undo();

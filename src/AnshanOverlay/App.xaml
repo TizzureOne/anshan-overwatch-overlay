@@ -9,6 +9,8 @@
   <Style TargetType="Window"><Setter Property="FontFamily" Value="Microsoft YaHei UI"/><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#27374A"/><Setter Property="Background" Value="#F4F6F9"/></Style>
   <Style TargetType="TextBlock"><Setter Property="TextWrapping" Value="Wrap"/></Style>
   <Style TargetType="Button">
+   <EventSetter Event="MouseEnter" Handler="ButtonHover"/><EventSetter Event="MouseLeave" Handler="ButtonHover"/>
+   <EventSetter Event="PreviewMouseLeftButtonDown" Handler="ButtonPress"/><EventSetter Event="PreviewMouseLeftButtonUp" Handler="ButtonHover"/>
    <Setter Property="Background" Value="#E5EAF0"/><Setter Property="Foreground" Value="#27374A"/>
    <Setter Property="BorderBrush" Value="#C5CFDB"/><Setter Property="BorderThickness" Value="1"/>
    <Setter Property="Padding" Value="10,7"/><Setter Property="Cursor" Value="Hand"/>
@@ -19,6 +21,6 @@
   </Style>
   <Style TargetType="CheckBox"><Setter Property="Foreground" Value="#27374A"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="Margin" Value="0,4,12,4"/></Style>
   <Style TargetType="TextBox"><Setter Property="Padding" Value="10,8"/><Setter Property="Background" Value="#E5EAF0"/><Setter Property="Foreground" Value="#27374A"/><Setter Property="CaretBrush" Value="#27374A"/><Setter Property="BorderBrush" Value="#C5CFDB"/><Setter Property="SelectionBrush" Value="#FF9C27"/></Style>
-  <Style TargetType="TabItem"><Setter Property="Padding" Value="14,9"/><Setter Property="Foreground" Value="#67768A"/><Setter Property="Background" Value="#E5EAF0"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem"><Border x:Name="Tab" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="0" Margin="0,0,4,0"><ContentPresenter ContentSource="Header"/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="#CC720A"/><Setter TargetName="Tab" Property="Background" Value="#E5EAF0"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
+  <Style TargetType="TabItem"><Setter Property="Padding" Value="10,9"/><Setter Property="Foreground" Value="#67768A"/><Setter Property="Background" Value="#E5EAF0"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem"><Border x:Name="Tab" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="0" Margin="0,0,4,0"><ContentPresenter ContentSource="Header"/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="#CC720A"/><Setter TargetName="Tab" Property="Background" Value="#E5EAF0"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style>
  </Application.Resources>
 </Application>

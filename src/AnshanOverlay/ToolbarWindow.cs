@@ -21,6 +21,7 @@ public sealed class ToolbarWindow : Window
     private readonly Button mode;
     private readonly Button pin;
     private readonly Button visibility;
+    public TextBlock ModeStateText { get; } = new() { FontSize = 11, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 6, 0) };
     private string shownState = "";
     private bool changingParameter;
     private bool adjusting;
@@ -50,10 +51,14 @@ public sealed class ToolbarWindow : Window
         foldButton = WindowAction("折叠", () => SetFolded(!IsFolded));
         WindowAction("关闭", Hide).ToolTip = "隐藏工具栏；可从托盘或面板快捷键恢复";
         WindowAction("退出程序", controller.Close);
-        shell.Children.Add(windowActions);
+        var header = new Grid(); header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var modeBadge = new Button { Content = ModeStateText, Padding = new Thickness(2, 0, 2, 0), Margin = new Thickness(10, 6, 0, 6), HorizontalAlignment = HorizontalAlignment.Left };
+        modeBadge.Click += (_, _) => controller.TogglePassThrough(); header.Children.Add(modeBadge);
+        Grid.SetColumn(windowActions, 1); header.Children.Add(windowActions); shell.Children.Add(header);
         toolContent = new ScrollViewer { Content = root, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Padding = new Thickness(0, 0, 0, 8) };
         Grid.SetRow(toolContent, 1); shell.Children.Add(toolContent);
         Content = new Border { Background = Background, Child = shell, BorderBrush = BoardView.Brush("#FF9C27"), BorderThickness = new Thickness(0, 3, 0, 0) };
+        Loaded += (_, _) => Motion.Reveal(toolContent);
         var row = new WrapPanel();
         var grip = new TextBlock { Text = "⠿", Width = 16, VerticalAlignment = VerticalAlignment.Center, Foreground = BoardView.Brush("#67768A"), Cursor = Cursors.SizeAll, ToolTip = "空白处可拖动；Alt+拖动可从任意位置移动" };
         grip.MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); }; row.Children.Add(grip);
@@ -110,6 +115,7 @@ public sealed class ToolbarWindow : Window
         foldButton.Content = folded ? "展开" : "折叠";
         MinHeight = folded ? 44 : 150; Height = folded ? 44 : expandedHeight;
         ResizeMode = folded ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
+        if (!folded) Motion.Reveal(toolContent);
     }
     private TextBlock ShortcutLabel(string action)
     {
@@ -121,6 +127,9 @@ public sealed class ToolbarWindow : Window
         foreach (var (action, label) in shortcutLabels) label.Text = controller.BindingText(action);
         names.IsChecked = controller.Store.Current.ShowHeroNames; dashed.IsChecked = controller.Editor.Dashed;
         mode.Content = controller.PassThrough ? "↗" : "✎";
+        ModeStateText.Text = controller.PassThrough ? "● 穿透中" : "● 编辑中";
+        ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
+        ModeStateText.ToolTip = controller.ModeState + " · " + controller.ModeShortcut;
         mode.ToolTip = (controller.PassThrough ? "穿透中 · 点击进入编辑" : "编辑中 · 点击开启鼠标穿透") + " · " + controller.BindingText("edit");
         mode.Background = BoardView.Brush(controller.PassThrough ? "#E5EAF0" : "#FF9C27");
         pin.Background = BoardView.Brush(controller.AlwaysOnTop ? "#FFD18E" : "#E5EAF0");

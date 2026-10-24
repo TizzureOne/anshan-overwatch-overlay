@@ -35,6 +35,9 @@ public sealed class Preferences
     public double PanelHeight { get; set; } = 900;
     public double ToolbarWidth { get; set; } = 680;
     public double ToolbarHeight { get; set; } = 220;
+    public bool AutomaticallyCheckUpdates { get; set; } = true;
+    public bool IncludeBetaUpdates { get; set; } = BuildInfo.IsBeta;
+    public bool AnimateInterface { get; set; } = true;
     public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "settings.json");
     public static string? Validate(Dictionary<string, Shortcut> shortcuts)
     {

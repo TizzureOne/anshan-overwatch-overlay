@@ -24,6 +24,7 @@ public static class SelfTests
         Directory.CreateDirectory(output);
         int count = 0;
         void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); count++; }
+        await UpdateTests.RunAsync(Check, output);
         var manifest = Assets.LoadHeroes();
         Check(manifest.Count == manifest.Heroes.Count && manifest.Count >= 54, "complete official roster");
         Check(manifest.Heroes.Select(h => h.Id).Distinct().Count() == manifest.Count, "unique hero IDs");
@@ -294,6 +295,36 @@ public static class SelfTests
         var background = new System.Windows.Controls.Grid { Background = BoardView.Brush("#263746"), Width = 1920, Height = 1080 };
         background.Children.Add(view); Render(background, 1920, 1080, Path.Combine(output, "overlay-preview.png"));
         var controller = new Controller(test: true);
+        new WindowInteropHelper(controller.Overlay).EnsureHandle();
+        Check(controller.Panel.VersionText.Text == BuildInfo.Label && controller.Panel.Title.Contains(BuildInfo.Version) && controller.Panel.CurrentVersionText.Text.Contains(BuildInfo.Version), "all visible version labels read the built application version");
+        Check(BuildInfo.Edition is "Full" or "Lite" && BuildInfo.Version.StartsWith(typeof(BuildInfo).Assembly.GetName().Version!.ToString(3)), "version and installer edition are embedded in the built assembly");
+        var legacyPreferences = JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!;
+        Check(legacyPreferences.AutomaticallyCheckUpdates && legacyPreferences.IncludeBetaUpdates == BuildInfo.IsBeta && legacyPreferences.AnimateInterface, "old settings get automatic checks and the correct update channel defaults");
+        controller.ApplyUpdatePreferences(false, false, false);
+        var updatePreferences = JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(controller.Settings, Assets.Json), Assets.Json)!;
+        Check(!updatePreferences.AutomaticallyCheckUpdates && !updatePreferences.IncludeBetaUpdates && !updatePreferences.AnimateInterface && !Motion.CanAnimate, "update and motion preferences roundtrip without touching user settings");
+        controller.ApplyUpdatePreferences(true, BuildInfo.IsBeta, true);
+        controller.SetPassThrough(true); controller.SetPassThrough(false);
+        controller.PlaceHero(manifest.Heroes[0], new Point(340, 260));
+        controller.Panel.FinishHeroDrag(true);
+        Check(controller.PassThrough && controller.Store.Current.Items.Count == 1 && !controller.Overlay.Board.Editing, "successful hero drag restores the original click-through mode and keeps the dropped hero");
+        Check((Native.GetWindowLong(new WindowInteropHelper(controller.Overlay).Handle, -20) & Native.ExTransparent) != 0, "successful drag also restores the native mouse pass-through flag");
+        controller.SetPassThrough(false); controller.Panel.FinishHeroDrag(false);
+        Check(!controller.PassThrough && controller.Panel.ModeStateText.Text.Contains("编辑中") && controller.Toolbar.ModeStateText.Text.Contains("编辑中"), "dragging from edit mode preserves editing and both panels show its actual state");
+        controller.SetPassThrough(true);
+        Check(controller.Panel.ModeStateText.Text.Contains("鼠标穿透") && controller.Panel.FoldedModeText.Text.Contains(controller.BindingText("edit")) && controller.Overlay.Board.ModeHint.Contains(controller.BindingText("edit")), "mode and the current shortcut remain visible in expanded folded and canvas status");
+        var modeShortcuts = controller.Settings.Shortcuts.ToDictionary(p => p.Key, p => p.Value);
+        modeShortcuts["edit"] = new Shortcut(Key.F9, ModifierKeys.Control | ModifierKeys.Alt); controller.ApplyShortcuts(modeShortcuts);
+        Check(controller.Panel.ModeText.Text.Contains("Ctrl+Alt+F9") && controller.Panel.FoldedModeText.Text.Contains("Ctrl+Alt+F9") && controller.Overlay.Board.ModeHint.Contains("Ctrl+Alt+F9"), "mode indicators follow the customized shortcut instead of a hardcoded default");
+        modeShortcuts["edit"] = new Shortcut(Key.E, ModifierKeys.Control | ModifierKeys.Alt); controller.ApplyShortcuts(modeShortcuts);
+        controller.Panel.ShowUpdateResult(0, BuildInfo.Version);
+        Check(controller.Panel.UpdateStateText.Text.StartsWith("更新完成"), "update completion reports the actually running target version");
+        controller.Panel.ShowUpdateResult(0, "99.0.0");
+        Check(controller.Panel.UpdateStateText.Text.StartsWith("更新未完成"), "installer success alone cannot claim a version that did not start");
+        controller.Panel.ShowUpdateResult(5, BuildInfo.Version);
+        Check(controller.Panel.UpdateStateText.Text.StartsWith("更新未完成"), "installer failures remain visible in the relaunched app");
+        controller.Panel.ShowAvailableUpdate(null); controller.Panel.MainTabs.SelectedIndex = 0;
+        controller.Store.Preview(new Scene());
         controller.Panel.RedTeam.IsChecked = true;
         Check(controller.Editor.Team == "enemy", "hero library team selector sets the next hero faction");
         controller.PlaceHero(manifest.Heroes[0], new Point(420, 260));
@@ -438,6 +469,14 @@ public static class SelfTests
         Render(panelPreview, 474, 900, Path.Combine(output, "settings-panel.png"));
         tabs.SelectedIndex = 2;
         Render(panelPreview, 474, 900, Path.Combine(output, "obs-panel.png"));
+        var exampleUpdate = new UpdateRelease("0.2.0-beta", "修复英雄拖放后画布挡住鼠标的问题。\n新增编辑 / 穿透状态提示。\n改善按钮反馈和面板切换。", new Uri(AppUpdates.ReleasesPage), "Setup.exe", new Uri(AppUpdates.ReleasesPage), 1, new string('0', 64));
+        controller.Panel.ShowAvailableUpdate(exampleUpdate); tabs.SelectedIndex = 3;
+        Check(controller.Panel.UpdateNotice.Visibility == Visibility.Visible && controller.Panel.InstallUpdateButton.IsEnabled && controller.Panel.UpdateNotes.Text == exampleUpdate.Notes, "available update shows a notice notes and an install action");
+        Render(panelPreview, 474, 900, Path.Combine(output, "updates-panel.png"));
+        panelControl.Width = 340; panelControl.Height = 600;
+        Render(panelPreview, 340, 600, Path.Combine(output, "updates-panel-narrow.png"));
+        controller.Panel.ShowAvailableUpdate(null);
+        Check(controller.Panel.UpdateNotice.Visibility == Visibility.Collapsed && !controller.Panel.InstallUpdateButton.IsEnabled && controller.Panel.UpdateNotes.Text == "", "no update clears old release information and disables install");
         tabs.SelectedIndex = 0; panelControl.Width = 340; panelControl.Height = 600;
         Render(panelPreview, 340, 600, Path.Combine(output, "panel-narrow.png"));
         var windowButtons = controller.Panel.WindowActions.Children.OfType<System.Windows.Controls.Button>().ToList();
@@ -453,6 +492,9 @@ public static class SelfTests
         Check(controller.Panel.ExpandedHeight == expandedHeight && controller.Panel.ExpandedPanel.Visibility == Visibility.Collapsed, "fold preserves saved expanded size and hides content");
         panelControl.Width = 340; panelControl.Height = MainWindow.FoldedHeight;
         Render(panelPreview, 340, (int)MainWindow.FoldedHeight, Path.Combine(output, "panel-folded.png"));
+        var foldedState = new Rect(controller.Panel.FoldedModeText.TranslatePoint(new Point(), panelContent), controller.Panel.FoldedModeText.RenderSize);
+        var foldedVersion = new Rect(controller.Panel.VersionText.TranslatePoint(new Point(), panelContent), controller.Panel.VersionText.RenderSize);
+        Check(!foldedState.IntersectsWith(foldedVersion) && foldedState.Bottom <= MainWindow.FoldedHeight, "folded mode status remains visible below the version label");
         Check(windowButtons.Select(b => b.TranslatePoint(new Point(), panelContent)).SequenceEqual(expandedPositions), "folded window action positions exactly match expanded positions");
         var expandPosition = controller.Panel.ExpandButton.TranslatePoint(new Point(), panelContent);
         var exitPosition = controller.Panel.ExitButton.TranslatePoint(new Point(), panelContent);
@@ -475,6 +517,12 @@ public static class SelfTests
         Check(PixelAlpha(ghostBoardFile, 60, 50) is >= 139 and <= 142 && ghostHero.Opacity == 1, "existing hero drag is translucent without modifying scene opacity");
         ghostBoard.DrawEditorChrome = false; ghostBoard.InvalidateVisual(); Render(ghostBoard, 120, 120, ghostBoardFile);
         Check(PixelAlpha(ghostBoardFile, 60, 50) == 255, "drag chrome cannot change clean output opacity");
+        var modeBoard = new BoardView { Scene = new Scene { Width = 800, Height = 600 }, Editing = true, ModeHint = controller.ModeState + " · " + controller.ModeShortcut };
+        string modeFile = Path.Combine(output, "canvas-mode-status.png"); Render(modeBoard, 800, 600, modeFile);
+        Check(PixelAlpha(modeFile, 20, 570) > 0, "editing canvas displays its mouse-interception status");
+        modeBoard.DrawEditorChrome = false; modeBoard.InvalidateVisual(); Render(modeBoard, 800, 600, modeFile);
+        Check(PixelAlpha(modeFile, 20, 570) == 0, "mouse mode status stays out of the clean OBS output");
+        modeBoard.DrawEditorChrome = true; modeBoard.InvalidateVisual(); Render(modeBoard, 800, 600, modeFile);
         File.WriteAllText(Path.Combine(output, "sample-scene.json"), store.Serialize());
         // Native style checks use an unshown HWND: no desktop input or screenshots.
         var hwnd = new WindowInteropHelper(controller.Overlay).EnsureHandle();
@@ -539,7 +587,7 @@ public static class SelfTests
         var rb = new byte[65536]; var rr = await reconnect.ReceiveAsync(new ArraySegment<byte>(rb), timeout.Token);
         Check(Encoding.UTF8.GetString(rb, 0, rr.Count).Contains("\"visible\":false"), "OBS reconnect restores latest state");
         await reconnect.CloseAsync(WebSocketCloseStatus.NormalClosure, "test", timeout.Token);
-        File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { passed = count, heroes = manifest.Count, serverPort = server.Port, utc = DateTime.UtcNow, renderTier = RenderCapability.Tier >> 16 }, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, heroes = manifest.Count, serverPort = server.Port, utc = DateTime.UtcNow, renderTier = RenderCapability.Tier >> 16 }, new JsonSerializerOptions { WriteIndented = true }));
     }
     private static void Render(FrameworkElement element, int width, int height, string path)
     {

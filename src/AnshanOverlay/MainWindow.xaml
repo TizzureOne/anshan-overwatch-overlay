@@ -1,5 +1,5 @@
 <Window x:Class="AnshanOverlay.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="安山守望 · 0.1.1-beta 测试版" Width="474" Height="900"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="安山守望" Width="474" Height="900"
  MinWidth="340" MinHeight="420" ResizeMode="CanResizeWithGrip" WindowStyle="None" Topmost="True" WindowStartupLocation="CenterScreen"
  Style="{StaticResource {x:Type Window}}" UseLayoutRounding="True" TextOptions.TextFormattingMode="Display" TextOptions.TextRenderingMode="Grayscale">
  <WindowChrome.WindowChrome><WindowChrome CaptionHeight="0" ResizeBorderThickness="8" GlassFrameThickness="0" CornerRadius="0"/></WindowChrome.WindowChrome>
@@ -15,14 +15,16 @@
   </Style>
  </Window.Resources>
  <Grid Background="#F4F6F9">
- <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1" Padding="18,14">
-  <Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" FontSize="11" Height="28" Padding="7,4" Margin="0,33,0,0" HorizontalAlignment="Right" VerticalAlignment="Top"/>
+ <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1" Padding="18,64,18,10">
+  <Grid><TextBlock x:Name="FoldedModeText" FontSize="11" Margin="0,0,85,0" VerticalAlignment="Center"/>
+   <Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" FontSize="11" Height="28" Padding="7,4" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
  </Border>
  <Border x:Name="ExpandedPanel" BorderBrush="#C5CFDB" BorderThickness="1,4,1,1"><Grid Margin="18,14,18,14">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Border Height="63"/>
   <Border Grid.Row="1" Background="{StaticResource PanelBrush}" CornerRadius="2" Padding="12" Margin="0,0,0,12">
    <StackPanel>
+    <TextBlock x:Name="ModeStateText" FontWeight="Bold" FontSize="12" Margin="0,0,0,8"/>
     <Button x:Name="ModeButton" Click="ModeClick" Padding="12,10" HorizontalContentAlignment="Stretch" Background="#FF9C27" BorderBrush="#FF9C27"><TextBlock x:Name="ModeText" FontWeight="Bold" FontSize="15"/></Button>
     <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
      <Button x:Name="TopmostButton" Click="TopmostClick" Margin="0,0,5,0" FontSize="12"/>
@@ -30,7 +32,8 @@
     </Grid>
    </StackPanel>
   </Border>
-  <TabControl Grid.Row="3" Background="Transparent" BorderThickness="0" Padding="0,12,0,0">
+  <Button x:Name="UpdateNotice" Grid.Row="2" Visibility="Collapsed" Click="ShowUpdatesClick" Margin="0,0,0,8" Background="#FFE1B8"><TextBlock x:Name="UpdateNoticeText" FontSize="12"/></Button>
+  <TabControl x:Name="MainTabs" Grid.Row="3" Background="Transparent" BorderThickness="0" Padding="0,12,0,0" SelectionChanged="TabChanged">
    <TabItem Header="英雄库">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
      <Grid><TextBox x:Name="SearchBox" TextChanged="SearchChanged" ToolTip="中文名、英文名、拼音首字母、常用别名"/>
@@ -102,6 +105,22 @@
      <TextBlock x:Name="SourceInfo" Foreground="#67768A" FontSize="10" Margin="0,12,0,0"/>
     </StackPanel></ScrollViewer>
    </TabItem>
+   <TabItem x:Name="UpdatesTab" Header="更新">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+     <TextBlock x:Name="CurrentVersionText" FontWeight="Bold" Margin="0,0,0,12"/>
+     <CheckBox x:Name="AutomaticUpdates" Content="自动检查更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
+     <TextBlock Text="启动时及使用期间后台检查，有新版时提示。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,6"/>
+     <CheckBox x:Name="BetaUpdates" Content="接收 Beta 测试版更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
+     <CheckBox x:Name="AnimateUi" Content="界面动效（遵循系统动画设置）" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
+     <WrapPanel Margin="0,10,0,10"><Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdateClick" Margin="0,0,7,5"/><Button Content="打开下载页" Click="OpenReleasesClick" Margin="0,0,0,5"/></WrapPanel>
+     <TextBlock x:Name="UpdateStateText" Text="尚未检查更新。" FontSize="12" Margin="0,0,0,10"/>
+     <TextBlock x:Name="AvailableVersionText" FontWeight="Bold" Margin="0,0,0,6"/>
+     <TextBox x:Name="UpdateNotes" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MinHeight="110" MaxHeight="210" Margin="0,0,0,10"/>
+     <ProgressBar x:Name="UpdateProgress" Visibility="Collapsed" Height="6" Maximum="100" Margin="0,0,0,10"/>
+     <WrapPanel><Button x:Name="InstallUpdateButton" Content="下载并安装更新" Click="InstallUpdateClick" IsEnabled="False" Background="#FF9C27" Margin="0,0,7,5"/><Button x:Name="CancelUpdateButton" Content="取消" Click="CancelUpdateClick" Visibility="Collapsed" Margin="0,0,0,5"/></WrapPanel>
+     <TextBlock Text="点击更新后将保存场景，退出并安装相同类型的新版，再重新打开。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,8,0,0"/>
+    </StackPanel></ScrollViewer>
+   </TabItem>
   </TabControl>
   <Border Grid.Row="4" BorderBrush="#C5CFDB" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,12,0,0">
    <StackPanel><TextBlock x:Name="StatusText" Foreground="{StaticResource MutedBrush}" FontSize="11" MinHeight="32"/><Grid Margin="0,8,0,0"><TextBlock x:Name="ObjectCount" Foreground="#67768A" FontSize="10" VerticalAlignment="Center"/><Button HorizontalAlignment="Right" Content="折叠面板" Click="FoldClick" FontSize="11" Padding="8,4"/></Grid></StackPanel>
@@ -110,7 +129,7 @@
  <Grid Margin="19,18,19,0" Height="46" VerticalAlignment="Top">
   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
   <Border Width="5" Background="#FF9C27" HorizontalAlignment="Left"/>
-  <StackPanel Margin="16,0,8,0"><TextBlock Text="安山守望" FontSize="22" FontWeight="ExtraBold" FontStyle="Italic" TextWrapping="NoWrap"/><TextBlock Text="0.1.1-beta · 测试版" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="1,5,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/></StackPanel>
+  <StackPanel Margin="16,0,8,0"><TextBlock Text="安山守望" FontSize="22" FontWeight="ExtraBold" FontStyle="Italic" TextWrapping="NoWrap"/><TextBlock x:Name="VersionText" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="1,5,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/></StackPanel>
   <StackPanel x:Name="WindowActions" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
    <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
    <Button x:Name="ClosePanelButton" ToolTip="关闭面板 · 画布与工具栏继续运行" AutomationProperties.Name="关闭面板" Click="CloseClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>

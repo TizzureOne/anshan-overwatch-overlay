@@ -15,6 +15,7 @@ public sealed class BoardView : FrameworkElement
     public string? DraggedHeroId { get; set; }
     public bool Editing { get; set; }
     public bool DrawEditorChrome { get; set; } = true;
+    public string ModeHint { get; set; } = "";
     public Point? EraserPosition { get; set; }
     public double EraserRadius { get; set; }
     public IReadOnlyList<Hero> Heroes { get; set; } = Array.Empty<Hero>();
@@ -76,6 +77,14 @@ public sealed class BoardView : FrameworkElement
             dc.DrawEllipse(null, new Pen(Brush("#FF9C27"), 1.5) { DashStyle = DashStyles.Dot }, cursor, EraserRadius, EraserRadius);
         if (DrawEditorChrome && Editing && SelectionBox is { } box)
             dc.DrawRectangle(Brush("#22FF9C27"), new Pen(Brush("#FF9C27"), 1.5) { DashStyle = DashStyles.Dash }, box);
+        if (DrawEditorChrome && Editing && ModeHint.Length > 0)
+        {
+            var hint = new FormattedText(ModeHint, CultureInfo.GetCultureInfo("zh-CN"), FlowDirection.LeftToRight, new Typeface("Microsoft YaHei UI"), 13, Brushes.White, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+            hint.MaxTextWidth = Math.Max(100, Scene.Width - 56);
+            var bounds = new Rect(16, Math.Max(12, Scene.Height - hint.Height - 32), hint.Width + 24, hint.Height + 16);
+            dc.DrawRoundedRectangle(Brush("#E6223344"), new Pen(Brush("#FF9C27"), 1), bounds, 5, 5);
+            dc.DrawText(hint, new Point(bounds.X + 12, bounds.Y + 8));
+        }
     }
     private static Pen Stroke(SceneItem item, Brush brush, double width)
     {

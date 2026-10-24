@@ -34,6 +34,7 @@ public sealed class HeroDragPreviewWindow : Window
         side = (int)Math.Ceiling(size + 8); Width = side; Height = side;
         new WindowInteropHelper(this).EnsureHandle();
         lastCursor = null; FollowCursor(); Show();
+        Native.SetPassThrough(handle, true);
         lastCursor = null; FollowCursor(); timer.Start();
     }
     public void End() { timer.Stop(); Hide(); lastCursor = null; }

@@ -30,6 +30,8 @@ public sealed class Controller
     public bool IsClosing { get; private set; }
     public string Status { get; private set; } = "选择英雄，在画面上点击放置。";
     public string HotkeyWarning { get; private set; } = "";
+    public string ModeState => PassThrough ? "当前：鼠标穿透" : "当前：编辑中 · 画布接收鼠标";
+    public string ModeShortcut => Settings.Shortcuts["edit"].Key == Key.None ? "点击模式按钮切换" : BindingText("edit") + " 切换";
     public List<DisplayInfo> Screens { get; } = Native.Displays();
     public DisplayInfo Screen { get; private set; }
     public event Action? Changed;
@@ -44,6 +46,7 @@ public sealed class Controller
     {
         testMode = test;
         if (!test) try { Settings = Preferences.Load(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { Status = "设置无法读取，已使用默认快捷键和尺寸。"; }
+        Motion.Enabled = !test && Settings.AnimateInterface;
         Editor = new Editor(Store); Server = new ObsServer(Heroes);
         Screen = Screens.FirstOrDefault(s => s.Primary) ?? Screens[0];
         autosave = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "autosave.json");
@@ -77,9 +80,13 @@ public sealed class Controller
         Overlay.Show(); Overlay.Place(Screen); Overlay.Refresh(); Panel.Show();
         Toolbar.Left = SystemParameters.WorkArea.Left + Math.Max(0, (SystemParameters.WorkArea.Width - Toolbar.Width) / 2);
         Toolbar.Top = SystemParameters.WorkArea.Bottom - Toolbar.Height - 16; Toolbar.Show();
-        CreateTray(); Notify();
+        CreateTray(); Notify(); Panel.StartUpdateChecks();
     }
-    public void Notify() => Changed?.Invoke();
+    public void Notify()
+    {
+        if (tray is not null) tray.Text = "安山守望 · " + (PassThrough ? "鼠标穿透" : "编辑中") + " · " + BindingText("edit");
+        Changed?.Invoke();
+    }
     public void SetStatus(string text) { Status = text; Notify(); }
     public void TogglePassThrough() => SetPassThrough(!PassThrough);
     public void SetPassThrough(bool enabled)
@@ -91,6 +98,7 @@ public sealed class Controller
                 previousWindow = foreground;
             if (!Store.Current.Visible) Store.Edit(s => s with { Visible = true });
         }
+        if (enabled) Panel.CancelHeroPreview();
         PassThrough = enabled; Overlay.SetPassThrough(enabled);
         if (enabled && previousWindow != IntPtr.Zero && Native.IsWindow(previousWindow)) Native.SetForegroundWindow(previousWindow);
         if (!enabled && !testMode) { Overlay.Activate(); RaisePanel(); }
@@ -174,6 +182,29 @@ public sealed class Controller
     {
         Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => i.Id == id && i.Kind == "hero" ? change(i) : i).ToList() });
     }
+    public string? ApplyUpdatePreferences(bool automatic, bool beta, bool animations)
+    {
+        var before = (Settings.AutomaticallyCheckUpdates, Settings.IncludeBetaUpdates, Settings.AnimateInterface);
+        Settings.AutomaticallyCheckUpdates = automatic; Settings.IncludeBetaUpdates = beta; Settings.AnimateInterface = animations;
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            (Settings.AutomaticallyCheckUpdates, Settings.IncludeBetaUpdates, Settings.AnimateInterface) = before;
+            return "设置未能保存，请检查文件权限后重试。";
+        }
+        Motion.Enabled = !testMode && animations; return null;
+    }
+    public void PrepareForUpdate()
+    {
+        Editor.Cancel();
+        if (testMode) return;
+        WriteScene(autosave); SaveWindowSettings();
+    }
+    private void SaveWindowSettings()
+    {
+        Settings.PanelWidth = double.IsFinite(Panel.RestoreBounds.Width) ? Panel.RestoreBounds.Width : Panel.Width; Settings.PanelHeight = Panel.ExpandedHeight;
+        Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight; Settings.Save();
+    }
     public void RaisePanel()
     {
         // Editing can activate the full-screen overlay. Keep its separate controls
@@ -234,7 +265,7 @@ public sealed class Controller
         try { if (!testMode) Settings.Save(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Settings.Shortcuts = old; if (!testMode) RegisterHotkeys(); if (shortcutsDialogOpen) SuspendHotkeys(); return "保存失败：" + ex.Message; }
         if (shortcutsDialogOpen) SuspendHotkeys();
-        Notify(); return null;
+        Overlay.Refresh(); Notify(); return null;
     }
     private void SuspendHotkeys()
     {
@@ -283,6 +314,7 @@ public sealed class Controller
         var menu = new System.Windows.Forms.ContextMenuStrip();
         menu.Items.Add("显示控制面板", null, (_, _) => ShowPanel());
         menu.Items.Add("编辑 / 鼠标穿透", null, (_, _) => TogglePassThrough());
+        menu.Items.Add("恢复鼠标穿透", null, (_, _) => SetPassThrough(true));
         menu.Items.Add("显示 / 隐藏标注", null, (_, _) => ToggleVisible());
         menu.Items.Add("退出", null, (_, _) => Close()); tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => ShowPanel();
@@ -307,12 +339,11 @@ public sealed class Controller
     public async void Close()
     {
         if (IsClosing) return; IsClosing = true;
+        Panel.StopUpdateChecks(); Panel.CancelHeroPreview();
         Editor.Cancel(); publishTimer.Stop(); saveTimer.Stop(); if (!testMode) SaveAuto();
         var hwnd = new WindowInteropHelper(Panel).Handle;
         foreach (var id in hotkeys) Native.UnregisterHotKey(hwnd, id);
-        Settings.PanelWidth = Panel.RestoreBounds.Width; Settings.PanelHeight = Panel.ExpandedHeight;
-        Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight;
-        if (!testMode) try { Settings.Save(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine(ex); }
+        if (!testMode) try { SaveWindowSettings(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine(ex); }
         tray?.Dispose(); trayIcon?.Dispose(); Toolbar.Close(); Overlay.Close(); Panel.Close();
         await Server.DisposeAsync(); Application.Current.Shutdown();
     }
