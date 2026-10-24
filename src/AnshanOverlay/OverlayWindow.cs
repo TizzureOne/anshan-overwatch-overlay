@@ -89,20 +89,19 @@ public sealed class OverlayWindow : Window
         var menu = new ContextMenu { Background = BoardView.Brush("#F4F6F9"), Foreground = BoardView.Brush("#27374A"), BorderBrush = BoardView.Brush("#C5CFDB"), BorderThickness = new Thickness(1), FontFamily = new FontFamily("Microsoft YaHei UI") };
         menu.Items.Add(new MenuItem { Header = controller.Heroes.Heroes.First(h => h.Id == hero.HeroId).Name, IsEnabled = false });
         menu.Items.Add(new Separator());
-        var team = new MenuItem { Header = "阵营" };
+        // Keep choices in one popup so screen-edge placement never requires entering a flipped submenu.
         foreach (var (id, name, color) in new[] { ("ally", "友方 · 蓝色", "#39A9FF"), ("enemy", "敌方 · 红色", "#F05265") })
         {
             var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = hero.Team == id, Foreground = BoardView.Brush(color) };
-            item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Team = id }); team.Items.Add(item);
+            item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Team = id }); menu.Items.Add(item);
         }
-        menu.Items.Add(team);
-        var sizes = new MenuItem { Header = $"尺寸 · {hero.Size:0} px" };
+        menu.Items.Add(new Separator());
+        menu.Items.Add(new MenuItem { Header = $"尺寸 · {hero.Size:0} px", IsEnabled = false });
         foreach (double size in new double[] { 40, 60, 80, 100, 120, 160 })
         {
             var item = new MenuItem { Header = $"{size:0} px", IsCheckable = true, IsChecked = Math.Abs(hero.Size - size) < 0.1 };
-            item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Size = size }); sizes.Items.Add(item);
+            item.Click += (_, _) => controller.UpdateHero(hero.Id, h => h with { Size = size }); menu.Items.Add(item);
         }
-        menu.Items.Add(sizes);
         menu.Items.Add(new Separator());
         var delete = new MenuItem { Header = "删除", Foreground = BoardView.Brush("#F05265") };
         delete.Click += (_, _) => controller.Store.Remove(hero.Id); menu.Items.Add(delete);

@@ -339,7 +339,48 @@ public static class SelfTests
         controller.Store.Preview(new Scene { Items = new() { markedLine } }); controller.Editor.SelectedId = markedLine.Id;
         Check(controller.ApplyShortcuts(settings.Shortcuts) is null && controller.BindingText("brush") == "Ctrl+F8", "custom shortcuts applied and hints refreshed");
         var heroMenu = controller.Overlay.CreateHeroMenu(store.Current.Items[0]);
-        Check(heroMenu.Items.OfType<System.Windows.Controls.MenuItem>().Count() == 4, "hero context menu exposes name team size delete without per-hero label");
+        Check(heroMenu.Items.OfType<System.Windows.Controls.MenuItem>().All(i => !i.HasItems), "hero menu keeps all actions in one popup at screen edges");
+        heroMenu.Measure(new Size(220, double.PositiveInfinity));
+        int heroMenuHeight = (int)Math.Ceiling(heroMenu.DesiredSize.Height);
+        Check(heroMenuHeight < 320, "hero menu fits on a small display without a secondary popup");
+        Render(heroMenu, 220, heroMenuHeight, Path.Combine(output, "hero-context-menu.png"));
+        var beforeMenu = controller.Store.Current;
+        var beforeMenuSelection = controller.Editor.SelectedId;
+        foreach (var position in new[] { new Point(1880, 60), new Point(40, 60), new Point(960, 1040) })
+        {
+            var menuHero = new SceneItem { HeroId = "lifeweaver", X = position.X, Y = position.Y, Team = "ally", Size = 80 };
+            var untouchedHero = new SceneItem { HeroId = "doomfist", X = 500, Y = 300, Team = "ally", Size = 80 };
+            controller.Store.Preview(new Scene { Items = new() { menuHero, untouchedHero } });
+            controller.Editor.SelectedId = menuHero.Id;
+            string beforeMenuAction = controller.Store.Serialize();
+            var directMenu = controller.Overlay.CreateHeroMenu(menuHero);
+            var redTeamItem = directMenu.Items.OfType<System.Windows.Controls.MenuItem>().SingleOrDefault(i => Equals(i.Header, "敌方 · 红色"));
+            Check(redTeamItem is { IsEnabled: true }, "hero faction is directly clickable without entering an edge-flipped submenu");
+            redTeamItem!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+            Check(controller.Store.Current.Items[0] == menuHero with { Team = "enemy" } && controller.Store.Current.Items[1] == untouchedHero, "direct faction action changes only its target hero");
+            var blueTeamItem = controller.Overlay.CreateHeroMenu(controller.Store.Current.Items[0]).Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "友方 · 蓝色"));
+            Check(!blueTeamItem.IsChecked, "reopening the hero menu reflects the changed faction");
+            blueTeamItem.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+            Check(controller.Store.Serialize() == beforeMenuAction, "direct blue faction action restores the target without changing other heroes");
+            controller.Undo(); Check(controller.Store.Current.Items[0].Team == "enemy", "one undo reverses only the latest faction action");
+            controller.Undo(); Check(controller.Store.Serialize() == beforeMenuAction, "one undo restores the faction menu action");
+            foreach (double menuSize in new double[] { 40, 60, 80, 100, 120, 160 })
+            {
+                directMenu = controller.Overlay.CreateHeroMenu(controller.Store.Current.Items[0]);
+                var sizeItem = directMenu.Items.OfType<System.Windows.Controls.MenuItem>().SingleOrDefault(i => Equals(i.Header, $"{menuSize:0} px"));
+                Check(sizeItem is { IsEnabled: true }, "hero size is directly clickable without entering an edge-flipped submenu " + menuSize);
+                sizeItem!.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+                Check(controller.Store.Current.Items[0] == menuHero with { Size = menuSize } && controller.Store.Current.Items[1] == untouchedHero, "direct size action preserves faction position and other heroes " + menuSize);
+            }
+            var resizedMenu = controller.Overlay.CreateHeroMenu(controller.Store.Current.Items[0]);
+            Check(resizedMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "160 px")).IsChecked, "reopening hero menu reflects the current size");
+            controller.Undo(); Check(controller.Store.Current.Items[0].Size == 120, "one undo reverses just the most recent size action");
+            var deleteHero = controller.Overlay.CreateHeroMenu(controller.Store.Current.Items[0]).Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "删除"));
+            deleteHero.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+            Check(controller.Store.Current.Items.Count == 1 && controller.Store.Current.Items[0] == untouchedHero, "hero menu delete removes only its target");
+            controller.Undo(); Check(controller.Store.Current.Items[0].Id == menuHero.Id && controller.Store.Current.Items[0].Size == 120, "undo restores a hero removed through its menu");
+        }
+        controller.Store.Preview(beforeMenu); controller.Editor.SelectedId = beforeMenuSelection;
         controller.Editor.Tool = EditorTool.Rectangle; controller.Toolbar.Refresh();
         var toolbarContent = (FrameworkElement)controller.Toolbar.Content; controller.Toolbar.Content = null;
         var toolbarPreview = new System.Windows.Controls.Border { Background = controller.Toolbar.Background, Child = toolbarContent };
