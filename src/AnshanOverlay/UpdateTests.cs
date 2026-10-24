@@ -92,7 +92,8 @@ class Fixture {
     static int Main(string[] args) {
         string exe = System.Reflection.Assembly.GetExecutingAssembly().Location;
         if (args.Length > 0 && args[0] == "--hold") { Thread.Sleep(1500); File.WriteAllText(exe + ".finished", "done"); return 0; }
-        File.WriteAllLines(exe + ".args", args);
+        File.WriteAllLines(exe + ".args.tmp", args);
+        File.Move(exe + ".args.tmp", exe + ".args");
         int code;
         return Path.GetFileName(exe) == "Setup.exe" && int.TryParse(Environment.GetEnvironmentVariable("ANSHAN_QA_SETUP_EXIT"), out code) ? code : 0;
     }
