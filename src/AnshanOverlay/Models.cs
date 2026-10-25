@@ -83,6 +83,7 @@ public sealed record Scene
 
 public sealed class SceneStore
 {
+    public const int MaxItems = 2000;
     public Scene Current { get; private set; } = new();
     private readonly List<Scene> undo = new();
     private readonly Stack<Scene> redo = new();
@@ -105,7 +106,7 @@ public sealed class SceneStore
     {
         var s = JsonSerializer.Deserialize<Scene>(json, Assets.Json) ?? throw new InvalidDataException("Empty scene");
         bool Finite(double n) => double.IsFinite(n) && Math.Abs(n) <= 100000;
-        if ((s.Version != 1 && s.Version != 2) || !Finite(s.Width) || !Finite(s.Height) || s.Width < 320 || s.Height < 200 || s.Width > 16000 || s.Height > 16000 || s.Items is null || s.Items.Count > 2000)
+        if ((s.Version != 1 && s.Version != 2) || !Finite(s.Width) || !Finite(s.Height) || s.Width < 320 || s.Height < 200 || s.Width > 16000 || s.Height > 16000 || s.Items is null || s.Items.Count > MaxItems)
             throw new InvalidDataException("Invalid scene dimensions, version or item count");
         var ids = new HashSet<string>();
         foreach (var i in s.Items)
@@ -217,6 +218,7 @@ public sealed class Editor
         before = Store.Current; endpoint = 0;
         if (Tool is EditorTool.Line or EditorTool.Arrow or EditorTool.Circle or EditorTool.Rectangle or EditorTool.Brush)
         {
+            if (Store.Current.Items.Count >= SceneStore.MaxItems) { before = null; return; }
             original = new SceneItem { Kind = Tool == EditorTool.Circle ? "circle" : Tool == EditorTool.Rectangle ? "rectangle" : Tool == EditorTool.Brush ? "path" : "line", X = point.X, Y = point.Y, X2 = point.X, Y2 = point.Y, Color = Color, Width = Width, Dashed = Dashed, Arrow = Tool == EditorTool.Arrow,
                 Points = Tool == EditorTool.Brush ? new() { new(point.X, point.Y) } : new() };
             SelectedId = original.Id;
@@ -309,13 +311,28 @@ public sealed class Editor
         if (Selected is not { Kind: "hero" } item) return;
         Store.Edit(s => s with { Items = s.Items.Select(i => i.Id == item.Id ? i with { Size = Math.Clamp(i.Size + direction * 8, 24, 400) } : i).ToList() });
     }
-    public void Duplicate()
+    public bool Duplicate()
     {
         Cancel();
-        var copies = SelectedItems.Select(i => Translate(i, new Vector(24, 24)) with { Id = Guid.NewGuid().ToString("N") }).ToList();
-        if (copies.Count == 0) return;
+        var selected = SelectedItems;
+        if (selected.Length == 0 || selected.Length > SceneStore.MaxItems - Store.Current.Items.Count) return false;
+        var bounds = Rect.Empty;
+        foreach (var item in selected)
+        {
+            var visible = SelectionBounds(item);
+            bounds.Union(visible.IsEmpty ? MovementBounds(item) : visible);
+        }
+        static double Offset(double first, double last, double length)
+        {
+            double min = -first, max = length - last;
+            if (min > max) return 0; // A group larger than the canvas keeps its existing placement.
+            return Math.Clamp(max >= 24 ? 24 : min <= -24 ? -24 : 24, min, max);
+        }
+        var delta = new Vector(Offset(bounds.Left, bounds.Right, Store.Current.Width), Offset(bounds.Top, bounds.Bottom, Store.Current.Height));
+        var copies = selected.Select(i => Translate(i, delta) with { Id = Guid.NewGuid().ToString("N") }).ToList();
         selection.Clear(); selection.UnionWith(copies.Select(i => i.Id));
         Store.Edit(s => s with { Items = s.Items.Concat(copies).ToList() });
+        return true;
     }
     public void Delete()
     {

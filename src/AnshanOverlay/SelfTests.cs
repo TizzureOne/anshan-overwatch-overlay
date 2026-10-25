@@ -24,6 +24,12 @@ public static class SelfTests
         Directory.CreateDirectory(output);
         int count = 0;
         void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); count++; }
+        await EdgeCaseTests.RunAsync(Check, output);
+        if (args.Contains("--edge-cases-only"))
+        {
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "edge cases" }));
+            return;
+        }
         await UpdateTests.RunAsync(Check, output);
         var manifest = Assets.LoadHeroes();
         var opacityCases = new (SceneItem Item, int X, int Y)[] {
@@ -375,7 +381,7 @@ public static class SelfTests
         Check(controller.PassThrough && controller.Store.Current.Items.Count == 1 && !controller.Overlay.Board.Editing, "successful hero drag restores the original click-through mode and keeps the dropped hero");
         Check((Native.GetWindowLong(new WindowInteropHelper(controller.Overlay).Handle, -20) & Native.ExTransparent) != 0, "successful drag also restores the native mouse pass-through flag");
         controller.SetPassThrough(false); controller.Panel.FinishHeroDrag(false);
-        Check(!controller.PassThrough && controller.Panel.ModeStateText.Text.Contains("编辑中") && controller.Toolbar.ModeStateText.Text.Contains("编辑中"), "dragging from edit mode preserves editing and both panels show its actual state");
+        Check(!controller.PassThrough && controller.Panel.ModeStateText.Text.Contains("正在标注") && controller.Toolbar.ModeStateText.Text.Contains("正在标注"), "dragging from edit mode preserves editing and both panels show its actual state");
         controller.SetPassThrough(true);
         Check(controller.Panel.ModeStateText.Text.Contains("鼠标穿透") && controller.Panel.FoldedModeText.Text.Contains(controller.BindingText("edit")) && controller.Overlay.Board.ModeHint.Contains(controller.BindingText("edit")), "mode and the current shortcut remain visible in expanded folded and canvas status");
         var modeShortcuts = controller.Settings.Shortcuts.ToDictionary(p => p.Key, p => p.Value);
@@ -413,7 +419,14 @@ public static class SelfTests
         var lineup = new[] { "orisa", "genji", "ana", "sombra", "doctrine" }.Select(id => manifest.Heroes.Single(h => h.Id == id)).ToArray();
         controller.Panel.BatchMode.IsChecked = true;
         foreach (var hero in lineup) controller.Panel.ToggleBatchHero(hero);
+        controller.Panel.TankRole.IsChecked = true; controller.Panel.SearchBox.Text = "安娜";
+        Check(controller.Panel.AllRole.IsChecked == true && controller.Panel.HeroList.Items.Cast<Hero>().Any(h => h.Id == "ana"), "typing a hero search searches across roles and selects the all filter");
+        controller.Panel.SearchBox.Text = "";
+        Check(controller.Panel.HeroList.Items.Count == manifest.Count, "clearing a global search displays the full roster");
+        controller.Panel.TankRole.IsChecked = true;
+        Check(controller.Panel.HeroList.Items.Cast<Hero>().All(h => h.Role == "tank"), "role filtering still narrows the global roster");
         controller.Panel.SearchBox.Text = "not-a-hero";
+        Check(controller.Panel.EmptySearch.Visibility == Visibility.Visible, "empty search explains the absence of results");
         Check(controller.Panel.HeroList.Items.Count == 0 && controller.Panel.BatchHint.Text.StartsWith("已选 5 位") && controller.Panel.AddHeroesButton.IsEnabled, "hero search preserves the complete pending lineup");
         controller.Panel.SupportRole.IsChecked = true; controller.Panel.SearchBox.Text = "血律";
         Check(controller.Panel.HeroList.Items.Cast<Hero>().Single().Id == "doctrine" && controller.Panel.BatchHint.Text.StartsWith("已选 5 位"), "role switching preserves the lineup and Doctrine appears under support");
@@ -518,21 +531,43 @@ public static class SelfTests
         controller.Editor.Tool = EditorTool.Move; controller.Toolbar.Refresh();
         Render(toolbarPreview, 680, 220, Path.Combine(output, "selection-toolbar.png"));
         Render(toolbarPreview, 340, 300, Path.Combine(output, "toolbar-narrow.png"));
-        var toolbarTexts = Descendants(toolbarPreview).OfType<System.Windows.Controls.TextBlock>().ToList();
-        Check(!toolbarTexts.Any(t => t.Text == "英雄"), "toolbar no longer contains hero tool button");
-        Check(toolbarTexts.Any(t => t.Text == "Ctrl+F8") && toolbarTexts.Any(t => t.Text == "未设置"), "tool buttons display customized and cleared shortcuts");
-        Check(toolbarTexts.Any(t => t.Text == "Ctrl+Shift+Delete" && t.ActualWidth > 70), "clear tool displays full long shortcut");
+        var toolbarButtons = Descendants(toolbarPreview).OfType<System.Windows.Controls.Button>().ToList();
+        Check(toolbarButtons.Any(b => b.Tag is EditorTool.Brush && b.ToolTip.ToString()!.Contains("Ctrl+F8")), "compact toolbar exposes customized shortcuts in tooltips");
+        Check(controller.Toolbar.CreateShapeMenu().Items.OfType<System.Windows.Controls.MenuItem>().Any(i => Equals(i.Tag, EditorTool.Line) && i.Header.ToString()!.Contains("未设置")), "shape menu preserves the unassigned shortcut hint");
+        Check(controller.Toolbar.CreateMoreMenu().Items.OfType<System.Windows.Controls.MenuItem>().Any(i => i.Header.ToString()!.Contains("Ctrl+Shift+Delete")), "clear action retains its full shortcut in the overflow menu");
         controller.Store.Preview(selectionScene); controller.Editor.Down(new Point(60, 60)); controller.Editor.Move(new Point(330, 270), false); controller.Editor.Up(); controller.Toolbar.Refresh();
         Render(toolbarPreview, 340, 300, Path.Combine(output, "multi-selection-toolbar.png"));
         var multiHint = Descendants(toolbarPreview).OfType<System.Windows.Controls.TextBlock>().FirstOrDefault(t => t.Text.StartsWith("已选 3 项"));
         Check(multiHint is not null && multiHint.ActualWidth <= 245 && !Descendants(toolbarPreview).OfType<System.Windows.Controls.Slider>().Any(), "multi-selection toolbar shows a wrapped count and no arbitrary single-item properties");
         settings.Shortcuts["brush"] = new Shortcut(Key.B); settings.Shortcuts["line"] = new Shortcut(Key.L);
         controller.ApplyShortcuts(settings.Shortcuts);
-        Check(toolbarTexts.Any(t => t.Text == "B") && !toolbarTexts.Any(t => t.Text == "Ctrl+F8"), "shortcut labels update without switching tools");
+        Check(toolbarButtons.Any(b => b.Tag is EditorTool.Brush && b.ToolTip.ToString() == "画笔 · B"), "shortcut tooltips update without switching tools");
         controller.Editor.Tool = EditorTool.Rectangle; controller.Toolbar.Refresh();
         Render(toolbarPreview, 680, 230, Path.Combine(output, "toolbar-shortcuts.png"));
-        var toolbarWindowActions = Descendants(toolbarPreview).OfType<System.Windows.Controls.Button>().Where(b => b.Content is string).Select(b => (string)b.Content).ToList();
-        Check(new[] { "折叠", "关闭", "退出程序" }.All(toolbarWindowActions.Contains), "toolbar exposes fold close and exit actions");
+        var toolbarMenuActions = controller.Toolbar.CreateMoreMenu().Items.OfType<System.Windows.Controls.MenuItem>().Select(i => i.Header.ToString()).ToList();
+        Check(toolbarMenuActions.Contains("隐藏工具栏") && toolbarMenuActions.Contains("退出程序") && Descendants(toolbarPreview).OfType<System.Windows.Controls.Button>().Any(b => Equals(b.ToolTip, "折叠工具栏")), "toolbar exposes fold and overflow hide/exit actions");
+        foreach (var shapeTool in new[] { EditorTool.Line, EditorTool.Arrow, EditorTool.Circle, EditorTool.Rectangle })
+        {
+            controller.Toolbar.CreateShapeMenu().Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Tag, shapeTool)).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+            Check(controller.Editor.Tool == shapeTool, "compact shape menu selects " + shapeTool);
+        }
+        foreach (var viewport in new[] { new Size(680, 180), new Size(340, 300), new Size(300, 300) })
+        {
+            Render(toolbarPreview, (int)viewport.Width, (int)viewport.Height, Path.Combine(output, $"toolbar-drawing-{viewport.Width:0}.png"));
+            var controls = Descendants(toolbarPreview).OfType<FrameworkElement>().Where(e => e is System.Windows.Controls.Slider || e is System.Windows.Controls.CheckBox || e is System.Windows.Controls.Button { Tag: string });
+            Check(controls.All(e => new Rect(new Point(), viewport).Contains(new Rect(e.TranslatePoint(new Point(), toolbarPreview), e.RenderSize))), "drawing colors width and toggles fit without clipping at " + viewport.Width);
+            Check(Descendants(toolbarPreview).OfType<System.Windows.Controls.ScrollViewer>().All(v => v.ScrollableHeight < 1 && v.ScrollableWidth < 1), "drawing controls need no scrolling at " + viewport.Width);
+        }
+        string beforeOverflowClear = controller.Store.Serialize();
+        var selectedBeforeOverflow = controller.Editor.SelectedIds.ToArray();
+        controller.Toolbar.CreateMoreMenu().Items.OfType<System.Windows.Controls.MenuItem>().Single(i => i.Header.ToString()!.StartsWith("清空全部")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.Items.Count == 0, "overflow clear action clears the current canvas");
+        controller.Undo(); Check(controller.Store.Serialize() == beforeOverflowClear, "overflow clear remains reversible in one undo");
+        bool namesBeforeMenu = controller.Store.Current.ShowHeroNames;
+        controller.Toolbar.CreateMoreMenu().Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "英雄名称")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
+        Check(controller.Store.Current.ShowHeroNames != namesBeforeMenu, "hero names remain accessible from the overflow menu for every tool");
+        controller.Undo();
+        controller.Editor.Select(selectedBeforeOverflow); controller.Notify();
         double toolbarHeight = controller.Toolbar.Height;
         controller.Toolbar.SetFolded(true);
         Render(toolbarPreview, 340, 44, Path.Combine(output, "toolbar-folded.png"));
@@ -578,9 +613,12 @@ public static class SelfTests
         Check(controller.Panel.UpdateNotice.Visibility == Visibility.Collapsed && !controller.Panel.InstallUpdateButton.IsEnabled && controller.Panel.UpdateNotes.Text == "", "no update clears old release information and disables install");
         tabs.SelectedIndex = 0; panelControl.Width = 340; panelControl.Height = 600;
         Render(panelPreview, 340, 600, Path.Combine(output, "panel-narrow.png"));
+        var heroViewport = new Rect(controller.Panel.HeroScroll.TranslatePoint(new Point(), panelControl), controller.Panel.HeroScroll.RenderSize);
+        Check(heroViewport.Height >= 260, "compact main panel keeps room for more than two complete hero rows");
+        Check(controller.Panel.AppMark.Source == Assets.AppIcon && controller.Panel.AppMark.ActualWidth == 20, "main title bar displays the existing application icon");
         var windowButtons = controller.Panel.WindowActions.Children.OfType<System.Windows.Controls.Button>().ToList();
         var expandedPositions = windowButtons.Select(b => b.TranslatePoint(new Point(), panelContent)).ToArray();
-        Check(windowButtons.Count == 3 && windowButtons.All(b => b.Content is System.Windows.Shapes.Path), "window actions use minimize close and power vector icons");
+        Check(windowButtons.Count == 3 && windowButtons.Count(b => b.Content is System.Windows.Shapes.Path) == 2 && controller.Panel.CreateMoreMenu().Items.OfType<System.Windows.Controls.MenuItem>().Any(i => Equals(i.Header, "退出程序")), "window header keeps minimize close and overflow exit reachable");
         Check(WindowGestures.IsControl((System.Windows.Controls.TabItem)tabs.Items[0]) && WindowGestures.IsControl(controller.Panel.SearchBox), "blank drag excludes tabs and search field");
         Check(!WindowGestures.IsControl(controller.Panel.ExpandedPanel), "panel blank area allows dragging");
         Check(!WindowGestures.IsControl(controller.Panel.SearchHint), "hero list hint allows blank dragging");
@@ -592,15 +630,15 @@ public static class SelfTests
         panelControl.Width = 340; panelControl.Height = MainWindow.FoldedHeight;
         Render(panelPreview, 340, (int)MainWindow.FoldedHeight, Path.Combine(output, "panel-folded.png"));
         var foldedState = new Rect(controller.Panel.FoldedModeText.TranslatePoint(new Point(), panelContent), controller.Panel.FoldedModeText.RenderSize);
-        var foldedVersion = new Rect(controller.Panel.VersionText.TranslatePoint(new Point(), panelContent), controller.Panel.VersionText.RenderSize);
-        Check(!foldedState.IntersectsWith(foldedVersion) && foldedState.Bottom <= MainWindow.FoldedHeight, "folded mode status remains visible below the version label");
+        Check(foldedState.Top >= 36 && foldedState.Bottom <= MainWindow.FoldedHeight, "folded mode status remains visible below the title bar");
         Check(windowButtons.Select(b => b.TranslatePoint(new Point(), panelContent)).SequenceEqual(expandedPositions), "folded window action positions exactly match expanded positions");
         var expandPosition = controller.Panel.ExpandButton.TranslatePoint(new Point(), panelContent);
-        var exitPosition = controller.Panel.ExitButton.TranslatePoint(new Point(), panelContent);
-        Check(expandPosition.Y > exitPosition.Y + controller.Panel.ExitButton.ActualHeight && Math.Abs(expandPosition.X + controller.Panel.ExpandButton.ActualWidth - exitPosition.X - controller.Panel.ExitButton.ActualWidth) < 1, "expand action is on next row right aligned with window actions");
+        Check(expandPosition.Y >= 36 && expandPosition.Y + controller.Panel.ExpandButton.ActualHeight <= MainWindow.FoldedHeight, "expand action stays reachable below the title bar");
         controller.Panel.SetFolded(true); controller.Panel.SetFolded(false);
         Check(controller.Panel.Height == expandedHeight && controller.Panel.ResizeMode == ResizeMode.CanResizeWithGrip && controller.Panel.Top == 120, "expand restores dimensions and resizing after repeated fold");
+        controller.SetPanelCloseBehavior(PanelCloseBehavior.HidePanel);
         string beforePanelClose = controller.Store.Serialize(); controller.Panel.Close();
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
         Check(!controller.IsClosing && Native.IsWindow(new WindowInteropHelper(controller.Panel).Handle) && controller.Store.Serialize() == beforePanelClose, "closing panel keeps program scene and native hotkey window alive");
         var ghost = new HeroDragPreviewWindow(); var ghostHandle = new WindowInteropHelper(ghost).EnsureHandle();
         Check(!ghost.IsTracking && !ghost.ShowActivated && !ghost.ShowInTaskbar && !ghost.IsHitTestVisible, "drag preview idle has no timer or activation");
@@ -717,7 +755,55 @@ public static class SelfTests
         panelControl.Content = null; controller.Panel.Content = panelContent;
         toolbarPreview.Child = null; controller.Toolbar.Content = toolbarContent;
         await MotionTests.RunAsync(controller, Check, output);
+        await CheckPanelClosing(Check, output);
         File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, heroes = manifest.Count, serverPort = server.Port, utc = DateTime.UtcNow, renderTier = RenderCapability.Tier >> 16 }, new JsonSerializerOptions { WriteIndented = true }));
+    }
+    private static async Task CheckPanelClosing(Action<bool, string> Check, string output)
+    {
+        var controller = new Controller(test: true);
+        var panel = new WindowInteropHelper(controller.Panel).EnsureHandle();
+        var toolbar = new WindowInteropHelper(controller.Toolbar).EnsureHandle();
+        var overlay = new WindowInteropHelper(controller.Overlay).EnsureHandle();
+        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && controller.Panel.CloseBehaviorChoice.SelectedIndex == 0, "first use asks how to close the main panel");
+        Check(JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!.CloseBehavior == PanelCloseBehavior.Ask, "upgrading settings without a close preference asks on the first close");
+        controller.Store.Edit(scene => scene with { Items = new() { new SceneItem { HeroId = "ana", X = 150, Y = 150 } } });
+        string sceneBefore = controller.Store.Serialize();
+        var dialog = new CloseBehaviorWindow(controller);
+        var dialogHandle = new WindowInteropHelper(dialog).EnsureHandle();
+        Check(dialog.RememberChoice.IsChecked == true && dialog.Owner == controller.Panel && !dialog.ShowInTaskbar && IsAbove(dialogHandle, panel), "close prompt remembers by default and belongs above the main panel");
+        Check(dialog.Background is not null && dialog.FontFamily.Source == controller.Panel.FontFamily.Source && dialog.FontSize == controller.Panel.FontSize, "close prompt uses the application background and typography");
+        var dialogContent = (FrameworkElement)dialog.Content; dialog.Content = null;
+        var preview = new System.Windows.Controls.ContentControl { Content = dialogContent, FontFamily = dialog.FontFamily, FontSize = dialog.FontSize, Foreground = dialog.Foreground };
+        var dialogPreview = new System.Windows.Controls.Border { Background = dialog.Background, Child = preview };
+        dialogPreview.Measure(new Size(424, double.PositiveInfinity));
+        Render(dialogPreview, 424, (int)Math.Ceiling(dialogPreview.DesiredSize.Height), Path.Combine(output, "close-behavior-dialog.png"));
+        Check(dialog.HideInterfaceButton.ActualWidth > 80 && dialog.ExitButton.ActualWidth > 60, "close prompt action labels fit their buttons");
+        preview.Content = null; dialog.Content = dialogContent; dialog.Close();
+        Check(!controller.IsClosing && controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && controller.Store.Serialize() == sceneBefore, "dismissing the close prompt preserves the app preference and scene");
+        var once = new CloseBehaviorWindow(controller); once.RememberChoice.IsChecked = false;
+        once.HideInterfaceButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(!controller.IsClosing && controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && Native.IsWindow(panel) && Native.IsWindow(toolbar) && Native.IsWindow(overlay), "one-time interface close keeps all native windows alive and asks again next time");
+        var remember = new CloseBehaviorWindow(controller);
+        remember.HideInterfaceButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.HidePanel && controller.Panel.CloseBehaviorChoice.SelectedIndex == 1, "remembering interface close updates the settings selector");
+        controller.Panel.ClosePanelButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(!controller.IsClosing && Native.IsWindow(panel) && controller.Store.Serialize() == sceneBefore, "remembered interface close bypasses the prompt and preserves the scene");
+        string settingsPath = Path.Combine(output, "close-behavior-settings.json");
+        File.WriteAllText(settingsPath, JsonSerializer.Serialize(controller.Settings, Assets.Json));
+        Check(JsonSerializer.Deserialize<Preferences>(File.ReadAllText(settingsPath), Assets.Json)!.CloseBehavior == PanelCloseBehavior.HidePanel, "remembered close behavior survives settings file serialization");
+        controller.Panel.CloseBehaviorChoice.SelectedIndex = 0;
+        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Ask, "settings can restore asking on every close");
+        controller.Panel.CloseBehaviorChoice.SelectedIndex = 2;
+        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Exit && !controller.IsClosing && controller.Panel.ClosePanelButton.ToolTip.ToString()!.Contains("退出程序"), "settings can select exit without immediately closing the app");
+        controller.Panel.Close();
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+        Check(controller.IsClosing && !Native.IsWindow(panel) && !Native.IsWindow(toolbar) && !Native.IsWindow(overlay), "native panel close follows the saved exit choice without reentering Closing");
+        var exitController = new Controller(test: true);
+        var exitPanel = new WindowInteropHelper(exitController.Panel).EnsureHandle();
+        var exitDialog = new CloseBehaviorWindow(exitController);
+        exitDialog.ExitButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+        Check(exitController.IsClosing && !Native.IsWindow(exitPanel) && exitController.Settings.CloseBehavior == PanelCloseBehavior.Exit, "exit from the first-close prompt remembers the choice and closes the program windows");
+        Check(JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(exitController.Settings, Assets.Json), Assets.Json)!.CloseBehavior == PanelCloseBehavior.Exit, "remembered exit choice survives settings serialization");
     }
     private static bool IsAbove(IntPtr window, IntPtr other)
     {

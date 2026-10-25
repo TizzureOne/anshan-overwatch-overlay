@@ -32,6 +32,7 @@ public sealed class Controller
     public string HotkeyWarning { get; private set; } = "";
     public string ModeState => PassThrough ? "当前：鼠标穿透" : "当前：编辑中 · 画布接收鼠标";
     public string ModeShortcut => Settings.Shortcuts["edit"].Key == Key.None ? "点击模式按钮切换" : BindingText("edit") + " 切换";
+    public string PanelRestoreHint => Settings.Shortcuts["panel"].Key == Key.None ? "可从系统托盘重新打开。" : $"可从系统托盘或 {BindingText("panel")} 重新打开。";
     public List<DisplayInfo> Screens { get; } = Native.Displays();
     public DisplayInfo Screen { get; private set; }
     public event Action? Changed;
@@ -45,7 +46,7 @@ public sealed class Controller
     public Controller(bool test = false)
     {
         testMode = test;
-        if (!test) try { Settings = Preferences.Load(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { Status = "设置无法读取，已使用默认快捷键和尺寸。"; }
+        if (!test) { Settings = Preferences.Load(out var warning); if (warning is not null) Status = warning; }
         Motion.Enabled = !test && Settings.AnimateInterface;
         Editor = new Editor(Store); Server = new ObsServer(Heroes);
         Screen = Screens.FirstOrDefault(s => s.Primary) ?? Screens[0];
@@ -133,10 +134,11 @@ public sealed class Controller
         if (Editor.Team == team) return;
         Editor.Team = team; Notify();
     }
-    public void AddHeroes(IReadOnlyList<Hero> heroes)
+    public bool AddHeroes(IReadOnlyList<Hero> heroes)
     {
-        if (heroes.Count == 0) return;
+        if (heroes.Count == 0) return false;
         Editor.Cancel();
+        if (heroes.Count > SceneStore.MaxItems - Store.Current.Items.Count) { ReportItemLimit(); return false; }
         double size = 0; int columns = 1;
         for (int n = heroes.Count; n >= 1; n--)
         {
@@ -154,6 +156,7 @@ public sealed class Controller
         Store.Edit(s => s with { Visible = true, Items = s.Items.Concat(added).ToList() });
         SetTool(EditorTool.Move);
         SetStatus($"已添加 {added.Count} 位{(Editor.Team == "ally" ? "蓝方" : "红方")}英雄，可拖动任一头像整体移动。");
+        return true;
     }
     public void ChangeScreen(DisplayInfo screen)
     {
@@ -165,6 +168,12 @@ public sealed class Controller
     public void Redo() { Editor.Cancel(); Store.Redo(); Overlay.Refresh(); }
     public void Clear(bool linesOnly) { Editor.Cancel(); Store.Clear(linesOnly); }
     public void Delete() => Editor.Delete();
+    public void ReportItemLimit() => SetStatus($"场景最多容纳 {SceneStore.MaxItems} 个对象，本次未添加。请先删除部分内容后重试。");
+    public void Duplicate()
+    {
+        if (!Editor.Duplicate() && Editor.SelectedItems.Length > 0) ReportItemLimit();
+        Overlay.Refresh(); Notify();
+    }
     public void CancelOrDeselect()
     {
         if (Editor.IsDragging) { Editor.Cancel(); Overlay.Board.ReleaseMouseCapture(); }
@@ -196,6 +205,17 @@ public sealed class Controller
             return "透明度设置未能保存，请检查文件权限后重试。";
         }
         Overlay.Refresh(); Notify(); return null;
+    }
+    public string? SetPanelCloseBehavior(PanelCloseBehavior behavior)
+    {
+        var before = Settings.CloseBehavior; Settings.CloseBehavior = behavior;
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Settings.CloseBehavior = before;
+            return "关闭行为未能保存，请检查文件权限后重试。";
+        }
+        Notify(); return null;
     }
     public string? ApplyUpdatePreferences(bool automatic, bool beta, bool animations)
     {
@@ -258,7 +278,7 @@ public sealed class Controller
             case "rectangle": SetTool(EditorTool.Rectangle); break; case "eraser": SetTool(EditorTool.Eraser); break;
             case "dash": SetDashed(!Editor.Dashed); break; case "names": SetHeroNames(!Store.Current.ShowHeroNames); break;
             case "undo": Undo(); break; case "redo": Redo(); break;
-            case "duplicate": Editor.Cancel(); Editor.Duplicate(); Overlay.Refresh(); Notify(); break;
+            case "duplicate": Duplicate(); break;
             case "delete": Delete(); break; case "clear": Clear(false); break;
             case "cancel": CancelOrDeselect(); break;
         }
@@ -309,13 +329,15 @@ public sealed class Controller
         else Store.Replace(next);
     }
     public void EndPropertyEdit() { if (propertyBefore is not { } before) return; propertyBefore = null; Store.Commit(before); }
-    public void PlaceHero(Hero hero, Point position)
+    public bool PlaceHero(Hero hero, Point position)
     {
         Editor.Cancel();
+        if (Store.Current.Items.Count >= SceneStore.MaxItems) { ReportItemLimit(); return false; }
         var item = new SceneItem { HeroId = hero.Id, X = Math.Clamp(position.X, 0, Store.Current.Width), Y = Math.Clamp(position.Y, 0, Store.Current.Height), Size = Editor.Size, Team = Editor.Team };
         Editor.SelectedId = item.Id;
         Store.Edit(s => s with { Visible = true, Items = s.Items.Append(item).ToList() });
         SetStatus($"已放置 {hero.Name}，可直接拖动。");
+        return true;
     }
     private IntPtr HotkeyHook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
@@ -368,6 +390,6 @@ public sealed class Controller
         foreach (var id in hotkeys) Native.UnregisterHotKey(hwnd, id);
         if (!testMode) try { SaveWindowSettings(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine(ex); }
         tray?.Dispose(); trayIcon?.Dispose(); Toolbar.Close(); Panel.Close(); Overlay.Close();
-        await Server.DisposeAsync(); Application.Current.Shutdown();
+        await Server.DisposeAsync(); if (!testMode) Application.Current.Shutdown();
     }
 }

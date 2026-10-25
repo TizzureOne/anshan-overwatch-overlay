@@ -24,7 +24,7 @@ public sealed class OverlayWindow : Window
         Board.DragOver += (_, e) => { e.Effects = e.Data.GetDataPresent("AnshanHero") ? DragDropEffects.Copy : DragDropEffects.None; e.Handled = true; };
         Board.Drop += (_, e) => {
             if (e.Data.GetData("AnshanHero") is string id && controller.Heroes.Heroes.FirstOrDefault(h => h.Id == id) is { } hero)
-            { controller.PlaceHero(hero, e.GetPosition(Board)); e.Effects = DragDropEffects.Copy; }
+            { e.Effects = controller.PlaceHero(hero, e.GetPosition(Board)) ? DragDropEffects.Copy : DragDropEffects.None; }
             e.Handled = true;
         };
         Content = new Viewbox { Stretch = Stretch.Uniform, Child = Board };
@@ -33,6 +33,7 @@ public sealed class OverlayWindow : Window
             if (controller.PassThrough) return;
             Board.Focus(); controller.Editor.Down(e.GetPosition(Board), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
             if (controller.Editor.IsDragging) Board.CaptureMouse();
+            else if (controller.Store.Current.Items.Count >= SceneStore.MaxItems) controller.ReportItemLimit();
             Refresh(); controller.Notify(); e.Handled = true;
         };
         Board.MouseMove += (_, e) =>

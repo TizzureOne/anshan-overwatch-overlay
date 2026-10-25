@@ -14,6 +14,7 @@ public partial class MainWindow : Window
 {
     private readonly Controller controller;
     private bool ready;
+    private bool closePromptOpen;
     private string role = "tank";
     private Point heroDragOrigin;
     private bool draggedHero;
@@ -21,7 +22,7 @@ public partial class MainWindow : Window
     private double expandedHeight;
     private HeroDragPreviewWindow? dragPreview;
     public bool IsFolded { get; private set; }
-    public const double FoldedHeight = 110;
+    public const double FoldedHeight = 84;
     public double ExpandedHeight => IsFolded ? expandedHeight : (WindowState == WindowState.Normal ? Motion.Height(this) : RestoreBounds.Height);
     public MainWindow(Controller controller)
     {
@@ -35,14 +36,22 @@ public partial class MainWindow : Window
         Width = Math.Min(controller.Settings.PanelWidth, SystemParameters.WorkArea.Width - 24);
         Height = Math.Min(controller.Settings.PanelHeight, SystemParameters.WorkArea.Height - 24);
         WindowLayout.Restore(this, controller.Settings.PanelPosition);
-        Icon = Assets.AppIcon;
+        Icon = Assets.AppIcon; AppMark.Source = Assets.AppIcon;
         WindowGestures.EnableBlankDrag(this);
         ScreenBox.ItemsSource = controller.Screens; ScreenBox.SelectedItem = controller.Screen;
         SourceInfo.Text = $"英雄素材：Blizzard 官方 · {controller.Heroes.RetrievedAt.ToLocalTime():yyyy-MM-dd} 获取\n© Blizzard Entertainment。非官方教学工具。";
-        Closing += (_, e) => { if (!controller.IsClosing) { e.Cancel = true; ClosePanel(); } };
+        Closing += (_, e) =>
+        {
+            if (controller.IsClosing) return;
+            e.Cancel = true;
+            // Finish the native close event before hiding or closing this window again.
+            Dispatcher.BeginInvoke(new Action(() => RequestPanelClose()));
+        };
         Closed += (_, _) => dragPreview?.Close();
         PreviewKeyDown += (_, e) =>
         {
+            if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+            { SetFolded(false); MainTabs.SelectedIndex = 0; SearchBox.Focus(); SearchBox.SelectAll(); e.Handled = true; return; }
             if (Keyboard.FocusedElement is TextBox or ComboBox || e.Key == Key.Tab) return;
             controller.HandleEditorKey(e);
         };
@@ -52,22 +61,30 @@ public partial class MainWindow : Window
     public void Refresh()
     {
         if (!ready) return;
-        ModeText.Text = (controller.PassThrough ? "进入编辑" : "鼠标穿透") + "  ·  " + controller.BindingText("edit");
-        Motion.Text(ModeStateText, controller.ModeState);
+        ModeText.Text = (controller.PassThrough ? "开始标注" : "返回游戏") + "  " + controller.BindingText("edit");
+        Motion.Text(ModeStateText, controller.PassThrough ? "● 鼠标穿透" : "● 正在标注");
         ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
         Motion.Text(FoldedModeText, (controller.PassThrough ? "穿透中" : "编辑中") + " · " + controller.BindingText("edit"));
         FoldedModeText.Foreground = ModeStateText.Foreground;
         ModeStateText.ToolTip = FoldedModeText.ToolTip = controller.ModeShortcut;
         ShortcutHelp.Text = string.Join("\n", Preferences.Actions.Select(a => $"{controller.BindingText(a.Id)}    {a.Label}"));
-        Motion.Paint(ModeButton, BackgroundProperty, controller.PassThrough ? "#FF9C27" : "#FFD18E");
-        Motion.Paint(TopmostButton, BackgroundProperty, controller.AlwaysOnTop ? "#FFE1B8" : "#E5EAF0");
-        Motion.Paint(VisibleButton, BackgroundProperty, controller.Store.Current.Visible ? "#FFFFFF" : "#E4E8EE");
-        TopmostButton.Content = controller.AlwaysOnTop ? "●  画布置顶" : "○  画布未置顶";
-        VisibleButton.Content = controller.Store.Current.Visible ? "●  标注可见" : "○  标注已隐藏";
+        TopmostLabel.Text = controller.AlwaysOnTop ? "画布置顶" : "画布未置顶";
+        VisibleLabel.Text = controller.Store.Current.Visible ? "标注可见" : "标注已隐藏";
+        TopmostButton.ToolTip = controller.AlwaysOnTop ? "点击取消画布置顶" : "点击将画布置顶";
+        VisibleButton.ToolTip = controller.Store.Current.Visible ? "点击隐藏标注" : "点击显示标注";
         Motion.Text(StatusText, controller.Status);
+        StatusText.ToolTip = controller.Status;
         HotkeyWarningText.Text = controller.HotkeyWarning;
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         PassThroughOpacityText.Text = controller.Settings.PassThroughOpacityPercent + "%";
+        CloseBehaviorChoice.SelectedIndex = (int)controller.Settings.CloseBehavior;
+        CloseBehaviorHint.Text = "仅关闭界面时，画布和工具栏继续运行。" + controller.PanelRestoreHint;
+        ClosePanelButton.ToolTip = controller.Settings.CloseBehavior switch
+        {
+            PanelCloseBehavior.HidePanel => "仅关闭界面 · 画布与工具栏继续运行",
+            PanelCloseBehavior.Exit => "退出程序 · 保存场景并关闭所有窗口",
+            _ => "关闭 · 询问退出程序或仅关闭界面"
+        };
         Motion.Text(ObjectCount, $"{controller.Store.Current.Items.Count(i => i.Kind == "hero")} 个英雄  /  {controller.Store.Current.Items.Count(i => i.Kind != "hero")} 个标注");
         UndoButton.IsEnabled = controller.Store.CanUndo; RedoButton.IsEnabled = controller.Store.CanRedo;
         ObsUrl.Text = controller.Server.Port == 0 ? "OBS 服务未启动" : controller.Server.Url;
@@ -79,8 +96,11 @@ public partial class MainWindow : Window
     {
         if (!ready) return;
         string query = SearchBox.Text.Trim();
-        var heroes = controller.Heroes.Heroes.Where(h => h.Role == role && h.Matches(query)).ToList();
-        HeroList.ItemsSource = heroes; SearchHint.Text = query.Length == 0 ? $"{heroes.Count} 位 · 名称 / 拼音首字母" : $"找到 {heroes.Count} 位英雄";
+        var heroes = controller.Heroes.Heroes.Where(h => (role == "all" || h.Role == role) && h.Matches(query)).ToList();
+        HeroList.ItemsSource = heroes;
+        SearchHint.Text = query.Length == 0 ? $"拖出头像放置到画布 · {heroes.Count} 位英雄" : $"找到 {heroes.Count} 位英雄 · 拖出头像放置";
+        EmptySearch.Visibility = heroes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        HeroScroll.ScrollToTop();
     }
     public void SetFolded(bool folded)
     {
@@ -95,11 +115,51 @@ public partial class MainWindow : Window
         Motion.Reveal(folded ? FoldedPanel : ExpandedPanel);
     }
     public void ClosePanel() { dragPreview?.End(); Hide(); }
+    internal void RequestPanelClose(PanelCloseBehavior? behavior = null)
+    {
+        if (controller.IsClosing) return;
+        switch (behavior ?? controller.Settings.CloseBehavior)
+        {
+            case PanelCloseBehavior.HidePanel: ClosePanel(); break;
+            case PanelCloseBehavior.Exit: controller.Close(); break;
+            default:
+                if (closePromptOpen) return;
+                closePromptOpen = true;
+                try { new CloseBehaviorWindow(controller).ShowDialog(); }
+                finally { closePromptOpen = false; }
+                break;
+        }
+    }
+    private void CloseBehaviorChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ready || CloseBehaviorChoice.SelectedIndex < 0) return;
+        var behavior = (PanelCloseBehavior)CloseBehaviorChoice.SelectedIndex;
+        if (behavior == controller.Settings.CloseBehavior) return;
+        if (controller.SetPanelCloseBehavior(behavior) is { } error)
+        {
+            CloseBehaviorChoice.SelectedIndex = (int)controller.Settings.CloseBehavior;
+            controller.SetStatus(error);
+        }
+    }
     private void FoldClick(object s, RoutedEventArgs e) => SetFolded(true);
     private void ExpandClick(object s, RoutedEventArgs e) => SetFolded(false);
     private void MinimizeClick(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void CloseClick(object s, RoutedEventArgs e) => ClosePanel();
-    private void ExitClick(object s, RoutedEventArgs e) => controller.Close();
+    private void CloseClick(object s, RoutedEventArgs e) => RequestPanelClose();
+    internal ContextMenu CreateMoreMenu()
+    {
+        var menu = new ContextMenu();
+        void Add(string label, Action action) { var item = new MenuItem { Header = label }; item.Click += (_, _) => action(); menu.Items.Add(item); }
+        Add("自定义快捷键…", controller.ShowShortcuts);
+        Add("设置与更新", () => { SetFolded(false); MainTabs.SelectedItem = UpdatesTab; });
+        menu.Items.Add(new Separator());
+        Add("退出程序", controller.Close);
+        return menu;
+    }
+    private void MoreClick(object s, RoutedEventArgs e)
+    {
+        var menu = CreateMoreMenu(); menu.PlacementTarget = MoreButton;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom; menu.IsOpen = true;
+    }
     private void ModeClick(object s, RoutedEventArgs e) => controller.TogglePassThrough();
     private void PassThroughOpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -110,7 +170,12 @@ public partial class MainWindow : Window
     }
     private void TopmostClick(object s, RoutedEventArgs e) => controller.ToggleTopmost();
     private void VisibleClick(object s, RoutedEventArgs e) => controller.ToggleVisible();
-    private void SearchChanged(object s, TextChangedEventArgs e) => FilterHeroes();
+    private void SearchChanged(object s, TextChangedEventArgs e)
+    {
+        if (!ready) return;
+        if (SearchBox.Text.Trim().Length > 0 && AllRole.IsChecked != true) { AllRole.IsChecked = true; return; }
+        FilterHeroes();
+    }
     private void RoleChanged(object s, RoutedEventArgs e) { if (s is RadioButton button && button.IsChecked == true) { role = (string)button.Tag; FilterHeroes(); } }
     private void HeroClick(object s, RoutedEventArgs e)
     {
@@ -138,7 +203,8 @@ public partial class MainWindow : Window
         bool reveal = BatchActions.Visibility != Visibility.Visible && BatchMode.IsChecked == true;
         BatchActions.Visibility = BatchMode.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         if (reveal) Motion.Reveal(BatchActions);
-        Motion.Text(BatchHint, batchHeroes.Count == 0 ? "点击英雄加入列表，再点一次取消；可切换职责继续选择。" : $"已选 {batchHeroes.Count} 位：" + string.Join("、", batchHeroes.Select(h => h.Name)));
+        Motion.Text(BatchHint, batchHeroes.Count == 0 ? "点选英雄，可跨职责选择" : $"已选 {batchHeroes.Count} 位：" + string.Join("、", batchHeroes.Select(h => h.Name)));
+        BatchHint.ToolTip = BatchHint.Text;
         AddHeroesButton.Content = batchHeroes.Count == 0 ? "添加英雄" : $"添加 {batchHeroes.Count} 位英雄";
         AddHeroesButton.IsEnabled = batchHeroes.Count > 0;
     }
@@ -151,9 +217,8 @@ public partial class MainWindow : Window
     {
         string id = ((Hero)button.Tag).Id;
         bool selected = BatchMode.IsChecked == true && batchHeroes.Any(h => h.Id == id);
-        Motion.Paint(button, BackgroundProperty, selected ? "#FFF0DE" : "#FFFFFF");
-        Motion.Paint(button, BorderBrushProperty, selected ? "#E9AF64" : "#D8DEE8");
-        button.BorderThickness = new Thickness(selected ? 2 : 1);
+        Motion.Paint(button, BackgroundProperty, selected ? "#FFF0DF" : "#00FFFFFF");
+        Motion.Paint(button, BorderBrushProperty, selected ? "#BE7729" : "#00FFFFFF");
     }
     private void RefreshHeroButtons()
     {
@@ -163,7 +228,8 @@ public partial class MainWindow : Window
     }
     private void AddHeroesClick(object s, RoutedEventArgs e)
     {
-        controller.AddHeroes(batchHeroes.ToArray()); batchHeroes.Clear(); UpdateBatchControls(); RefreshHeroButtons();
+        if (controller.AddHeroes(batchHeroes.ToArray())) batchHeroes.Clear();
+        UpdateBatchControls(); RefreshHeroButtons();
     }
     private void ClearHeroSelectionClick(object s, RoutedEventArgs e)
     {
@@ -194,7 +260,7 @@ public partial class MainWindow : Window
     private void ShortcutsClick(object s, RoutedEventArgs e) => controller.ShowShortcuts();
     private void UndoClick(object s, RoutedEventArgs e) => controller.Undo();
     private void RedoClick(object s, RoutedEventArgs e) => controller.Redo();
-    private void DuplicateClick(object s, RoutedEventArgs e) { controller.Editor.Cancel(); controller.Editor.Duplicate(); controller.Overlay.Refresh(); }
+    private void DuplicateClick(object s, RoutedEventArgs e) => controller.Duplicate();
     private void DeleteClick(object s, RoutedEventArgs e) => controller.Delete();
     private void ClearLinesClick(object s, RoutedEventArgs e) => controller.Clear(true);
     private void ClearAllClick(object s, RoutedEventArgs e) => controller.Clear(false);
@@ -216,7 +282,11 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog { Filter = "安山场景 (*.json)|*.json" };
         if (dialog.ShowDialog(this) != true) return;
-        try { controller.LoadScene(dialog.FileName); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException) { controller.SetStatus("加载失败：" + ex.Message); }
+        LoadSceneFile(dialog.FileName);
+    }
+    internal void LoadSceneFile(string path)
+    {
+        try { controller.LoadScene(path); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.Json.JsonException or InvalidDataException) { controller.SetStatus("加载失败：" + ex.Message); }
     }
 }

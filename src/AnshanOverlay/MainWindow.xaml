@@ -5,81 +5,71 @@
  <WindowChrome.WindowChrome><WindowChrome CaptionHeight="0" ResizeBorderThickness="8" GlassFrameThickness="0" CornerRadius="0"/></WindowChrome.WindowChrome>
  <Window.Resources>
   <Style x:Key="RoleButton" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
-   <Setter Property="Foreground" Value="#67768A"/><Setter Property="Background" Value="#FFFFFF"/>
+   <Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="#42484F"/>
    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="RadioButton">
-    <Border x:Name="Shell" Background="{TemplateBinding Background}" BorderBrush="#D8DEE8" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,4,0">
-     <ContentPresenter HorizontalAlignment="Center"/>
-    </Border>
-    <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="#9E5900"/><Setter Property="FontWeight" Value="SemiBold"/><Setter TargetName="Shell" Property="BorderBrush" Value="#E9AF64"/><Setter TargetName="Shell" Property="Background" Value="#FFF0DE"/></Trigger></ControlTemplate.Triggers>
+    <Border x:Name="Shell" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" Padding="10,5" Margin="0,0,3,0"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+    <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter Property="Foreground" Value="#A65300"/><Setter Property="FontWeight" Value="SemiBold"/><Setter TargetName="Shell" Property="Background" Value="#FFF0DF"/></Trigger><MultiTrigger><MultiTrigger.Conditions><Condition Property="IsChecked" Value="True"/><Condition Property="GroupName" Value="AddHeroTeam"/></MultiTrigger.Conditions><Setter TargetName="Shell" Property="Background" Value="#F7F7F8"/><Setter TargetName="Shell" Property="BorderBrush" Value="#CDD0D4"/></MultiTrigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Shell" Property="BorderBrush" Value="#D2D5D9"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Shell" Property="BorderBrush" Value="#B9650B"/></Trigger></ControlTemplate.Triggers>
    </ControlTemplate></Setter.Value></Setter>
   </Style>
+  <Style x:Key="PanelTab" TargetType="TabItem"><Setter Property="FontSize" Value="13"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
+   <Border x:Name="Tab" Background="Transparent" Padding="10,10" Margin="0,0,2,0"><Grid><ContentPresenter x:Name="HeaderText" ContentSource="Header"/><Border x:Name="Indicator" Height="2" Width="18" Background="#D47918" VerticalAlignment="Bottom" Margin="0,0,0,-7" Visibility="Collapsed"/></Grid></Border>
+   <ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="HeaderText" Property="TextElement.FontWeight" Value="SemiBold"/><Setter TargetName="Indicator" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Tab" Property="Background" Value="#F0F1F3"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Tab" Property="Background" Value="#FFF0DF"/></Trigger></ControlTemplate.Triggers>
+  </ControlTemplate></Setter.Value></Setter></Style>
  </Window.Resources>
- <Grid Background="#F4F6F9">
- <Border x:Name="FoldedPanel" Visibility="Collapsed" BorderBrush="#D8DEE8" BorderThickness="1" Padding="18,64,18,10">
-  <Grid><TextBlock x:Name="FoldedModeText" FontSize="11" Margin="0,0,85,0" VerticalAlignment="Center"/>
-   <Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" FontSize="11" Height="28" Padding="7,4" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
+ <Border BorderBrush="#CDD0D4" BorderThickness="1" Background="White"><Grid>
+ <Border x:Name="FoldedPanel" Visibility="Collapsed" Padding="12,39,12,8" Background="#F7F7F8">
+  <Grid><TextBlock x:Name="FoldedModeText" FontSize="12" Margin="0,0,85,0" VerticalAlignment="Center"/><Button x:Name="ExpandButton" Content="展开面板" Click="ExpandClick" Style="{StaticResource QuietButton}" HorizontalAlignment="Right" VerticalAlignment="Center"/></Grid>
  </Border>
- <Border x:Name="ExpandedPanel" BorderBrush="#D8DEE8" BorderThickness="1"><Grid Margin="18,14,18,14">
-  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-  <Border Height="63"/>
-  <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="#E4E8EE" BorderThickness="1" CornerRadius="9" Padding="12" Margin="0,0,0,12">
-   <StackPanel>
-    <TextBlock x:Name="ModeStateText" FontWeight="Bold" FontSize="12" Margin="0,0,0,8"/>
-    <Button x:Name="ModeButton" Click="ModeClick" Padding="12,10" HorizontalContentAlignment="Stretch" Background="#FF9C27" BorderBrush="#FF9C27"><TextBlock x:Name="ModeText" FontWeight="Bold" FontSize="15"/></Button>
-    <Grid Margin="0,9,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition/></Grid.ColumnDefinitions>
-     <Button x:Name="TopmostButton" Click="TopmostClick" Margin="0,0,5,0" FontSize="12"/>
-     <Button x:Name="VisibleButton" Grid.Column="1" Click="VisibleClick" Margin="5,0,0,0" FontSize="12"/>
-    </Grid>
-   </StackPanel>
+ <Grid x:Name="ExpandedPanel">
+  <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="48"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <Border Grid.Row="1" BorderBrush="#E3E4E6" BorderThickness="0,0,0,1" Padding="12,6">
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+    <TextBlock x:Name="ModeStateText" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" TextWrapping="NoWrap"/>
+    <Button x:Name="ModeButton" Grid.Column="1" Click="ModeClick" Padding="8,4" Background="#F7F7F8" BorderBrush="#D2D5D9" ToolTip="切换画布编辑与鼠标穿透"><TextBlock x:Name="ModeText" FontSize="12" TextWrapping="NoWrap"/></Button>
+   </Grid>
   </Border>
-  <Button x:Name="UpdateNotice" Grid.Row="2" Visibility="Collapsed" Click="ShowUpdatesClick" Margin="0,0,0,8" Background="#FFE1B8"><TextBlock x:Name="UpdateNoticeText" FontSize="12"/></Button>
-  <TabControl x:Name="MainTabs" Grid.Row="3" Background="Transparent" BorderThickness="0" Padding="0,12,0,0" SelectionChanged="TabChanged">
-   <TabItem Header="英雄库">
-    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-     <Grid><TextBox x:Name="SearchBox" TextChanged="SearchChanged" ToolTip="中文名、英文名、拼音首字母、常用别名"/>
-      <TextBlock Text="搜索英雄 / 名称 / 英文" Margin="11,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False">
-       <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style>
-      </TextBlock>
+  <Button x:Name="UpdateNotice" Grid.Row="2" Visibility="Collapsed" Click="ShowUpdatesClick" Margin="12,6,12,0" Background="#FFF0DF"><TextBlock x:Name="UpdateNoticeText" FontSize="12"/></Button>
+  <TabControl x:Name="MainTabs" Grid.Row="3" Background="White" BorderThickness="0" Padding="0" SelectionChanged="TabChanged">
+   <TabItem Style="{StaticResource PanelTab}" Header="英雄库">
+    <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+     <Grid Margin="12,10,12,5"><TextBox x:Name="SearchBox" TextChanged="SearchChanged" FontSize="13" Padding="10,6" Height="34" ToolTip="搜索全部英雄：中文名、英文名、拼音首字母、常用别名" AutomationProperties.Name="搜索全部英雄"/>
+      <TextBlock Text="搜索全部英雄 / 名称 / 拼音" Margin="11,0,0,0" VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource MutedBrush}" IsHitTestVisible="False"><TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value=""><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
      </Grid>
-     <UniformGrid Grid.Row="1" Columns="3" Margin="0,10,0,8">
+     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="12,0,12,5">
+      <RadioButton x:Name="AllRole" Content="全部" Tag="all" GroupName="HeroRole" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
       <RadioButton x:Name="TankRole" Content="重装" Tag="tank" GroupName="HeroRole" IsChecked="True" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
       <RadioButton Content="输出" Tag="damage" GroupName="HeroRole" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
       <RadioButton x:Name="SupportRole" Content="支援" Tag="support" GroupName="HeroRole" Checked="RoleChanged" Style="{StaticResource RoleButton}"/>
-     </UniformGrid>
-     <StackPanel Grid.Row="2" Margin="0,0,0,8">
-      <WrapPanel Margin="0,2,0,6">
-       <TextBlock Text="添加到" FontSize="11" Margin="0,0,10,0" VerticalAlignment="Center"/>
-       <RadioButton x:Name="BlueTeam" Content="蓝方" Tag="ally" GroupName="AddHeroTeam" IsChecked="True" Checked="HeroTeamChanged" Foreground="#1482D4" FontSize="11" Margin="0,0,12,0"/>
-       <RadioButton x:Name="RedTeam" Content="红方" Tag="enemy" GroupName="AddHeroTeam" Checked="HeroTeamChanged" Foreground="#D52E48" FontSize="11" Margin="0,0,16,0"/>
-       <CheckBox x:Name="BatchMode" Content="批量选择" FontSize="11" Checked="BatchModeChanged" Unchecked="BatchModeChanged"/>
-      </WrapPanel>
-      <StackPanel x:Name="BatchActions" Visibility="Collapsed">
-       <ScrollViewer MaxHeight="48" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,6">
-        <TextBlock x:Name="BatchHint" FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}"/>
-       </ScrollViewer>
-       <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-        <Button x:Name="AddHeroesButton" Content="添加英雄" Click="AddHeroesClick" Background="#FF9C27" IsEnabled="False" Margin="0,0,6,0" FontSize="12"/>
-        <Button Grid.Column="1" Content="清除选择" Click="ClearHeroSelectionClick" FontSize="11"/>
-       </Grid>
+     </StackPanel>
+     <Grid Grid.Row="2" Margin="12,0,12,6"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+      <StackPanel Orientation="Horizontal">
+       <RadioButton x:Name="BlueTeam" Content="● 蓝方" Tag="ally" GroupName="AddHeroTeam" IsChecked="True" Checked="HeroTeamChanged" Style="{StaticResource RoleButton}" Foreground="#126EB4"/>
+       <RadioButton x:Name="RedTeam" Content="● 红方" Tag="enemy" GroupName="AddHeroTeam" Checked="HeroTeamChanged" Style="{StaticResource RoleButton}" Foreground="#BA3349"/>
       </StackPanel>
-     </StackPanel>
-     <StackPanel Grid.Row="3" Margin="0,0,0,8">
-      <TextBlock Text="拖出头像放到画布；批量添加请勾选“批量选择”。" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5"/>
-      <TextBlock x:Name="SearchHint" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
-     </StackPanel>
-     <ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-      <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-       <ItemsControl.ItemTemplate><DataTemplate>
-        <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="84" Tag="{Binding}" Margin="2,2,4,5" Padding="3,9" Background="#FFFFFF" BorderBrush="#D8DEE8" ToolTip="{Binding EnglishName}">
-         <StackPanel><Image Source="{Binding Portrait}" Width="58" Height="58" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" MaxWidth="86"/></StackPanel>
-        </Button>
-       </DataTemplate></ItemsControl.ItemTemplate>
-      </ItemsControl>
-     </ScrollViewer>
+      <CheckBox x:Name="BatchMode" Grid.Column="1" Content="批量添加" FontSize="12" Margin="0" VerticalAlignment="Center" Checked="BatchModeChanged" Unchecked="BatchModeChanged"/>
+     </Grid>
+     <Grid Grid.Row="3" Margin="9,0,9,0">
+      <ScrollViewer x:Name="HeroScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+       <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate><DataTemplate>
+         <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="94" Height="92" Tag="{Binding}" Margin="2" Padding="3,6" Style="{StaticResource QuietButton}" ToolTip="{Binding EnglishName}">
+          <StackPanel><Image Source="{Binding Portrait}" Width="52" Height="52" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="13" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" MaxWidth="86"/></StackPanel>
+         </Button>
+        </DataTemplate></ItemsControl.ItemTemplate>
+       </ItemsControl>
+      </ScrollViewer>
+      <TextBlock x:Name="EmptySearch" Text="没有找到英雄，试试名称或拼音首字母。" Visibility="Collapsed" Foreground="{StaticResource MutedBrush}" Margin="12,20" HorizontalAlignment="Center"/>
+     </Grid>
+     <Border x:Name="BatchActions" Grid.Row="4" Visibility="Collapsed" Padding="12,8" BorderBrush="#E3E4E6" BorderThickness="0,1,0,0" Background="#FAFAFB">
+      <StackPanel><TextBlock x:Name="BatchHint" FontSize="12" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
+       <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="AddHeroesButton" Content="添加英雄" Click="AddHeroesClick" Background="#B9650B" Foreground="White" BorderBrush="#B9650B" IsEnabled="False" Margin="0,0,6,0" Padding="8,5" FontSize="13"/><Button Grid.Column="1" Content="清除选择" Click="ClearHeroSelectionClick" Style="{StaticResource QuietButton}"/></Grid>
+      </StackPanel>
+     </Border>
+     <TextBlock x:Name="SearchHint" Grid.Row="5" Foreground="{StaticResource MutedBrush}" FontSize="12" Margin="12,6" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
     </Grid>
    </TabItem>
-   <TabItem Header="场景设置">
-    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+   <TabItem Style="{StaticResource PanelTab}" Header="场景">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12,10,12,10">
      <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,0,0,16"/>
      <TextBlock Text="鼠标穿透时的标注透明度" FontWeight="Bold" Margin="0,0,0,8"/>
      <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="45"/></Grid.ColumnDefinitions>
@@ -96,8 +86,8 @@
      <ComboBox x:Name="ScreenBox" SelectionChanged="ScreenChanged" Foreground="#162331" Padding="6"/>
     </StackPanel></ScrollViewer>
    </TabItem>
-   <TabItem Header="OBS / 帮助">
-    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+   <TabItem Style="{StaticResource PanelTab}" Header="OBS / 帮助">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12,10,12,10">
      <TextBlock Text="透明标注，独立输出" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
      <TextBlock Text="在 OBS 添加「浏览器」源，将下方地址粘贴到 URL，并放在游戏或视频源上方。" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,12"/>
      <TextBox x:Name="ObsUrl" IsReadOnly="True" FontFamily="Consolas" FontSize="12"/>
@@ -114,9 +104,15 @@
      <TextBlock x:Name="SourceInfo" Foreground="#67768A" FontSize="10" Margin="0,12,0,0"/>
     </StackPanel></ScrollViewer>
    </TabItem>
-   <TabItem x:Name="UpdatesTab" Header="更新">
-    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="2,0,8,0">
+   <TabItem Style="{StaticResource PanelTab}" x:Name="UpdatesTab" Header="设置">
+    <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12,10,12,10">
+     <TextBlock x:Name="VersionText" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
      <TextBlock x:Name="CurrentVersionText" FontWeight="Bold" Margin="0,0,0,12"/>
+     <TextBlock Text="点击主面板右上角 × 时" FontWeight="SemiBold" Margin="0,0,0,6"/>
+     <ComboBox x:Name="CloseBehaviorChoice" SelectionChanged="CloseBehaviorChanged" Margin="0,0,0,6" AutomationProperties.Name="关闭主面板时的行为">
+      <ComboBoxItem Content="每次询问"/><ComboBoxItem Content="仅关闭界面"/><ComboBoxItem Content="退出程序"/>
+     </ComboBox>
+     <TextBlock x:Name="CloseBehaviorHint" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,16"/>
      <CheckBox x:Name="AutomaticUpdates" Content="自动检查更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
      <TextBlock Text="启动时及使用期间后台检查，有新版时提示。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,6"/>
      <CheckBox x:Name="BetaUpdates" Content="接收 Beta 测试版更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
@@ -131,19 +127,22 @@
     </StackPanel></ScrollViewer>
    </TabItem>
   </TabControl>
-  <Border Grid.Row="4" BorderBrush="#C5CFDB" BorderThickness="0,1,0,0" Padding="0,12,0,0" Margin="0,12,0,0">
-   <StackPanel><TextBlock x:Name="StatusText" Foreground="{StaticResource MutedBrush}" FontSize="11" MinHeight="32"/><Grid Margin="0,8,0,0"><TextBlock x:Name="ObjectCount" Foreground="#67768A" FontSize="10" VerticalAlignment="Center"/><Button HorizontalAlignment="Right" Content="折叠面板" Click="FoldClick" FontSize="11" Padding="8,4"/></Grid></StackPanel>
+  <Border Grid.Row="4" Background="#F7F7F8" BorderBrush="#E3E4E6" BorderThickness="0,1,0,0" Padding="6,3,6,5">
+   <StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+    <Button x:Name="VisibleButton" Click="VisibleClick" Style="{StaticResource QuietButton}"><StackPanel Orientation="Horizontal"><Path Data="M 1,8 C 5,1 11,1 15,8 C 11,15 5,15 1,8 Z M 5,8 A 3,3 0 1 1 5,8.01" Stroke="#42484F" StrokeThickness="1.2" Width="16" Height="16" Margin="0,0,5,0"/><TextBlock x:Name="VisibleLabel" FontSize="12"/></StackPanel></Button>
+    <Button x:Name="TopmostButton" Grid.Column="1" Click="TopmostClick" Style="{StaticResource QuietButton}"><StackPanel Orientation="Horizontal"><Path Data="M 4,1 L 12,1 L 10,7 L 13,10 L 3,10 L 6,7 Z M 8,10 L 8,16" Stroke="#42484F" StrokeThickness="1.2" Width="16" Height="16" Margin="0,0,5,0"/><TextBlock x:Name="TopmostLabel" FontSize="12"/></StackPanel></Button>
+    <Button Grid.Column="2" HorizontalAlignment="Right" ToolTip="折叠面板" AutomationProperties.Name="折叠面板" Click="FoldClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 6,2 L 11,7 M 1,11 L 6,6 L 11,11" Width="12" Height="13" Stroke="#42484F" StrokeThickness="1.2"/></Button>
+   </Grid><Grid Margin="6,3,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock x:Name="ObjectCount" Foreground="#67768A" FontSize="11" TextWrapping="NoWrap"/><TextBlock x:Name="StatusText" Grid.Column="1" Text="自动保存" Foreground="#67768A" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" MaxWidth="160" Margin="10,0,0,0"/></Grid></StackPanel>
   </Border>
- </Grid></Border>
- <Grid Margin="19,18,19,0" Height="46" VerticalAlignment="Top">
+ </Grid>
+ <Border Height="36" VerticalAlignment="Top" Background="#F7F7F8" Padding="10,0,4,0"><Grid>
   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-  <Border Width="5" Background="#FF9C27" HorizontalAlignment="Left"/>
-  <StackPanel Margin="16,0,8,0"><TextBlock Text="安山守望" FontSize="22" FontWeight="ExtraBold" FontStyle="Italic" TextWrapping="NoWrap"/><TextBlock x:Name="VersionText" FontSize="10" Foreground="{StaticResource MutedBrush}" Margin="1,5,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/></StackPanel>
-  <StackPanel x:Name="WindowActions" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-   <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
-   <Button x:Name="ClosePanelButton" ToolTip="关闭面板 · 画布与工具栏继续运行" AutomationProperties.Name="关闭面板" Click="CloseClick" Width="27" Height="25" Padding="0" Margin="0,0,4,0"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
-   <Button x:Name="ExitButton" ToolTip="退出程序" AutomationProperties.Name="退出程序" Click="ExitClick" Width="27" Height="25" Padding="0"><Path Data="M 7,0 L 7,7 M 3,3 A 6,6 0 1 0 11,3" Width="14" Height="14" Stroke="#27374A" StrokeThickness="1.5"/></Button>
+  <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="AppMark" Width="20" Height="20" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="安山守望" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
+  <StackPanel x:Name="WindowActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+   <Button x:Name="MoreButton" Content="···" FontSize="18" ToolTip="更多操作" AutomationProperties.Name="更多操作" Click="MoreClick" Width="30" Style="{StaticResource QuietButton}"/>
+   <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
+   <Button x:Name="ClosePanelButton" ToolTip="关闭" AutomationProperties.Name="关闭面板" Click="CloseClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
   </StackPanel>
- </Grid>
- </Grid>
+ </Grid></Border>
+ </Grid></Border>
 </Window>

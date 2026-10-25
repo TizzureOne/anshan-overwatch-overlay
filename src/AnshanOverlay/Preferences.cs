@@ -15,6 +15,7 @@ public sealed record Shortcut(Key Key, ModifierKeys Modifiers = ModifierKeys.Non
 }
 public sealed record ShortcutAction(string Id, string Label, bool Global, Shortcut Default);
 public sealed record WindowPosition(double Left, double Top);
+public enum PanelCloseBehavior { Ask, HidePanel, Exit }
 public sealed class Preferences
 {
     public static readonly ShortcutAction[] Actions = {
@@ -41,6 +42,7 @@ public sealed class Preferences
     public bool AutomaticallyCheckUpdates { get; set; } = true;
     public bool IncludeBetaUpdates { get; set; } = BuildInfo.IsBeta;
     public bool AnimateInterface { get; set; } = true;
+    public PanelCloseBehavior CloseBehavior { get; set; } = PanelCloseBehavior.Ask;
     public int PassThroughOpacityPercent { get; set; } = 50;
     public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "settings.json");
     public static string? Validate(Dictionary<string, Shortcut> shortcuts)
@@ -58,16 +60,24 @@ public sealed class Preferences
         }
         return null;
     }
-    public static Preferences Load()
+    public static Preferences Load(out string? warning, string? path = null)
     {
-        if (!File.Exists(FilePath)) return new();
-        var value = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(FilePath), Assets.Json) ?? new();
+        warning = null;
+        try { return Read(path ?? FilePath); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
+        { warning = "设置无法读取，已使用默认快捷键和尺寸。"; return new(); }
+    }
+    private static Preferences Read(string path)
+    {
+        if (!File.Exists(path)) return new();
+        var value = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(path), Assets.Json) ?? new();
         value.Shortcuts ??= new();
         foreach (var action in Actions) value.Shortcuts.TryAdd(action.Id, action.Default);
         if (Validate(value.Shortcuts) is { } error) throw new InvalidDataException(error);
         value.PanelWidth = Size(value.PanelWidth, 340, 2400, 474); value.PanelHeight = Size(value.PanelHeight, 420, 2000, 900);
         value.ToolbarWidth = Size(value.ToolbarWidth, 300, 2400, 680); value.ToolbarHeight = Size(value.ToolbarHeight, 150, 1400, 180);
         value.PassThroughOpacityPercent = Math.Clamp(value.PassThroughOpacityPercent, 0, 100);
+        if (!Enum.IsDefined(value.CloseBehavior)) value.CloseBehavior = PanelCloseBehavior.Ask;
         return value;
     }
     private static double Size(double value, double min, double max, double fallback) => double.IsFinite(value) ? Math.Clamp(value, min, max) : fallback;
