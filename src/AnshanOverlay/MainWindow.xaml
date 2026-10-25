@@ -100,7 +100,7 @@
      <TextBlock x:Name="ShortcutHelp" LineHeight="23" Foreground="{StaticResource MutedBrush}"/>
      <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,10,0,10"/>
      <TextBlock Text="从列表拖出英雄可直接放置。框选接触头像即可选中，右键已选头像可批量调整阵营、尺寸或删除。移动工具选择标注后可编辑样式；Shift 约束方向或比例。" Foreground="{StaticResource MutedBrush}"/>
-     <TextBlock Text="建议使用窗口化或无边框模式。独占全屏覆盖需实机确认。素材均内置，日常使用无需联网。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,18,0,0"/>
+     <TextBlock Text="建议使用窗口化或无边框模式。独占全屏覆盖需实机确认。内置完整英雄资料，更新检查需要联网，已有资料可离线使用。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,18,0,0"/>
      <TextBlock x:Name="SourceInfo" Foreground="#67768A" FontSize="10" Margin="0,12,0,0"/>
     </StackPanel></ScrollViewer>
    </TabItem>
@@ -113,11 +113,18 @@
       <ComboBoxItem Content="每次询问"/><ComboBoxItem Content="仅关闭界面"/><ComboBoxItem Content="退出程序"/>
      </ComboBox>
      <TextBlock x:Name="CloseBehaviorHint" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,16"/>
-     <CheckBox x:Name="AutomaticUpdates" Content="自动检查更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
+     <TextBlock Text="英雄数据" FontWeight="SemiBold" Margin="0,0,0,6"/>
+     <TextBlock x:Name="HeroDataSummary" FontSize="12" Margin="0,0,0,6"/>
+     <CheckBox x:Name="AutomaticHeroUpdates" Content="启动时自动更新英雄数据" Checked="HeroUpdatePreferenceChanged" Unchecked="HeroUpdatePreferenceChanged"/>
+     <TextBlock Text="直接核对官方名单、名称、职责和头像，更新后立即生效。断网时继续使用已有资料。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,6"/>
+     <WrapPanel Margin="0,4,0,5"><Button x:Name="CheckHeroDataButton" Content="检查英雄数据更新" Click="CheckHeroDataClick" Margin="0,0,7,5"/><Button x:Name="CancelHeroDataButton" Content="取消" Click="CancelHeroDataClick" Visibility="Collapsed" Margin="0,0,0,5"/></WrapPanel>
+     <TextBlock x:Name="HeroDataStateText" Text="尚未检查英雄数据。" FontSize="12" Margin="0,0,0,18"/>
+     <TextBlock Text="软件更新" FontWeight="SemiBold" Margin="0,0,0,6"/>
+     <CheckBox x:Name="AutomaticUpdates" Content="自动检查软件更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
      <TextBlock Text="启动时及使用期间后台检查，有新版时提示。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,6"/>
      <CheckBox x:Name="BetaUpdates" Content="接收 Beta 测试版更新" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
      <CheckBox x:Name="AnimateUi" Content="界面动效（遵循系统动画设置）" Checked="UpdatePreferencesChanged" Unchecked="UpdatePreferencesChanged"/>
-     <WrapPanel Margin="0,10,0,10"><Button x:Name="CheckUpdateButton" Content="检查更新" Click="CheckUpdateClick" Margin="0,0,7,5"/><Button Content="打开下载页" Click="OpenReleasesClick" Margin="0,0,0,5"/></WrapPanel>
+     <WrapPanel Margin="0,10,0,10"><Button x:Name="CheckUpdateButton" Content="检查软件更新" Click="CheckUpdateClick" Margin="0,0,7,5"/><Button Content="打开下载页" Click="OpenReleasesClick" Margin="0,0,0,5"/></WrapPanel>
      <TextBlock x:Name="UpdateStateText" Text="尚未检查更新。" FontSize="12" Margin="0,0,0,10"/>
      <TextBlock x:Name="AvailableVersionText" FontWeight="Bold" Margin="0,0,0,6"/>
      <TextBox x:Name="UpdateNotes" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MinHeight="110" MaxHeight="210" Margin="0,0,0,10"/>

@@ -24,6 +24,18 @@ public static class SelfTests
         Directory.CreateDirectory(output);
         int count = 0;
         void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); count++; }
+        if (args.Contains("--hero-data-live"))
+        {
+            await HeroDataTests.RunLiveAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "live official hero update" }));
+            return;
+        }
+        if (!args.Contains("--edge-cases-only")) await HeroDataTests.RunAsync(Check, output);
+        if (args.Contains("--hero-data-only"))
+        {
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "hero data" }));
+            return;
+        }
         await EdgeCaseTests.RunAsync(Check, output);
         if (args.Contains("--edge-cases-only"))
         {
@@ -744,7 +756,8 @@ public static class SelfTests
             do { result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), timeout.Token); memory.Write(buffer, 0, result.Count); } while (!result.EndOfMessage);
             return Encoding.UTF8.GetString(memory.ToArray());
         }
-        Check((await Read()) == store.Serialize(), "OBS initial full snapshot");
+        string initialSnapshot = await Read();
+        Check(JsonSerializer.Serialize(SceneStore.Parse(initialSnapshot, manifest.Heroes), Assets.Json) == store.Serialize() && initialSnapshot.Contains("heroCatalog") && initialSnapshot.Contains("heroRevision"), "OBS initial full snapshot includes the scene and fresh hero data after reconnecting to a restarted app");
         store.Edit(s => s with { Visible = false }); server.Publish(store.Serialize());
         Check((await Read()).Contains("\"visible\":false"), "OBS visibility synchronizes");
         await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "test", timeout.Token);

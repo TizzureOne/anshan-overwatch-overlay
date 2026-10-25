@@ -30,6 +30,8 @@ public partial class MainWindow : Window
         Title = "安山守望 · " + BuildInfo.Label; VersionText.Text = BuildInfo.Label;
         CurrentVersionText.Text = "当前版本 " + BuildInfo.Version + " · " + BuildInfo.EditionName;
         AutomaticUpdates.IsChecked = controller.Settings.AutomaticallyCheckUpdates; BetaUpdates.IsChecked = controller.Settings.IncludeBetaUpdates; AnimateUi.IsChecked = controller.Settings.AnimateInterface;
+        AutomaticHeroUpdates.IsChecked = controller.Settings.AutomaticallyUpdateHeroes;
+        HeroDataStateText.Text = controller.HeroDataWarning ?? "尚未检查英雄数据。";
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         Loaded += (_, _) => Motion.Reveal(ExpandedPanel);
         IsVisibleChanged += (_, _) => { if (IsVisible) Motion.Reveal((FrameworkElement)Content, offset: 0); };
@@ -39,7 +41,6 @@ public partial class MainWindow : Window
         Icon = Assets.AppIcon; AppMark.Source = Assets.AppIcon;
         WindowGestures.EnableBlankDrag(this);
         ScreenBox.ItemsSource = controller.Screens; ScreenBox.SelectedItem = controller.Screen;
-        SourceInfo.Text = $"英雄素材：Blizzard 官方 · {controller.Heroes.RetrievedAt.ToLocalTime():yyyy-MM-dd} 获取\n© Blizzard Entertainment。非官方教学工具。";
         Closing += (_, e) =>
         {
             if (controller.IsClosing) return;
@@ -56,7 +57,7 @@ public partial class MainWindow : Window
             controller.HandleEditorKey(e);
         };
         controller.Changed += Refresh;
-        ready = true; FilterHeroes(); Refresh();
+        ready = true; RefreshHeroCatalog(); Refresh();
     }
     public void Refresh()
     {

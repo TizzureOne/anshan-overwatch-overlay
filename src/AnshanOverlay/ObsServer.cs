@@ -5,6 +5,8 @@ using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -21,7 +23,8 @@ public sealed class ObsServer : IAsyncDisposable
     private string latest = "{}";
     private readonly ConcurrentDictionary<Guid, Channel<string>> clients = new();
     private readonly object snapshotLock = new();
-    private readonly HeroManifest heroes;
+    private HeroManifest heroes;
+    private string heroRevision = Guid.NewGuid().ToString("N");
     public int Port { get; private set; }
     public string Url => $"http://127.0.0.1:{Port}/overlay";
     public int ClientCount => clients.Count;
@@ -49,7 +52,7 @@ public sealed class ObsServer : IAsyncDisposable
             candidate.MapGet("/overlay", () => Results.Bytes(Assets.Read("Web/overlay.html"), "text/html; charset=utf-8"));
             candidate.MapGet("/overlay.js", () => Results.Bytes(Assets.Read("Web/overlay.js"), "text/javascript; charset=utf-8"));
             candidate.MapGet("/heroes/{id}.png", (string id) => heroes.Heroes.Any(h => h.Id == id)
-                ? Results.Bytes(Assets.Read($"Assets/Heroes/{id}.png"), "image/png") : Results.NotFound());
+                ? Results.Bytes(Assets.ReadPortrait(id), "image/png") : Results.NotFound());
             candidate.MapGet("/state", () => Results.Text(Volatile.Read(ref latest), "application/json"));
             candidate.MapGet("/health", () => Results.Json(new { status = "ok", heroes = heroes.Count }));
             candidate.MapGet("/catalog", () => Results.Json(heroes.Heroes.ToDictionary(h => h.Id, h => h.Name)));
@@ -67,8 +70,20 @@ public sealed class ObsServer : IAsyncDisposable
     {
         lock (snapshotLock)
         {
+            var state = JsonNode.Parse(json)!.AsObject();
+            state["heroRevision"] = heroRevision;
+            state["heroCatalog"] = JsonSerializer.SerializeToNode(heroes.Heroes.ToDictionary(h => h.Id, h => h.Name));
+            json = state.ToJsonString();
             Volatile.Write(ref latest, json);
             foreach (var channel in clients.Values) channel.Writer.TryWrite(json);
+        }
+    }
+    public void UpdateHeroes(HeroManifest updated)
+    {
+        lock (snapshotLock)
+        {
+            Volatile.Write(ref heroes, updated); heroRevision = Guid.NewGuid().ToString("N");
+            Publish(latest);
         }
     }
     private async Task Stream(HttpContext context)

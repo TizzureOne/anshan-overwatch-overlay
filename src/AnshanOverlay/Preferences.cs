@@ -40,6 +40,7 @@ public sealed class Preferences
     public WindowPosition? PanelPosition { get; set; }
     public WindowPosition? ToolbarPosition { get; set; }
     public bool AutomaticallyCheckUpdates { get; set; } = true;
+    public bool AutomaticallyUpdateHeroes { get; set; } = true;
     public bool IncludeBetaUpdates { get; set; } = BuildInfo.IsBeta;
     public bool AnimateInterface { get; set; } = true;
     public PanelCloseBehavior CloseBehavior { get; set; } = PanelCloseBehavior.Ask;

@@ -28,6 +28,7 @@ function shapeNodes(kind) {
   group.append(shape);return {group,shape};
 }
 function render(scene) {
+  if (scene.heroCatalog) names = scene.heroCatalog;
   set(svg, {viewBox:`0 0 ${scene.width} ${scene.height}`});
   svg.style.opacity = scene.visible ? "1" : "0";
   const keep = new Set();
@@ -51,7 +52,8 @@ function render(scene) {
     if (item.kind === "hero") {
       const r = item.size / 2;
       set(n.base, {cx:item.x,cy:item.y,r}); set(n.ring,{cx:item.x,cy:item.y,r,stroke:item.team==="enemy"?"#F05265":"#39A9FF"});
-      set(n.image, {x:item.x-r,y:item.y-r,width:item.size,height:item.size,href:`/heroes/${item.heroId}.png`});
+      const portrait = `/heroes/${item.heroId}.png` + (scene.heroRevision ? `?v=${encodeURIComponent(scene.heroRevision)}` : "");
+      set(n.image, {x:item.x-r,y:item.y-r,width:item.size,height:item.size,href:portrait});
       n.text.style.display = n.labelBg.style.display = scene.showHeroNames ? "" : "none";
       if (scene.showHeroNames) {
         const size = Math.min(24, Math.max(12, item.size * 0.19));

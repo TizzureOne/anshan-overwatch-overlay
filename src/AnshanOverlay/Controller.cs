@@ -12,7 +12,9 @@ namespace AnshanOverlay;
 
 public sealed class Controller
 {
-    public HeroManifest Heroes { get; } = Assets.LoadHeroes();
+    public HeroDataSnapshot HeroData { get; private set; } = HeroDataSnapshot.BuiltIn;
+    public HeroManifest Heroes => HeroData.Manifest;
+    public string? HeroDataWarning { get; }
     public SceneStore Store { get; } = new();
     public Editor Editor { get; }
     public Preferences Settings { get; private set; } = new();
@@ -47,6 +49,7 @@ public sealed class Controller
     {
         testMode = test;
         if (!test) { Settings = Preferences.Load(out var warning); if (warning is not null) Status = warning; }
+        if (!test) { HeroData = new HeroDataUpdates().LoadCache(out var warning); HeroDataWarning = warning; Assets.UseHeroData(HeroData); }
         Motion.Enabled = !test && Settings.AnimateInterface;
         Editor = new Editor(Store); Server = new ObsServer(Heroes);
         Screen = Screens.FirstOrDefault(s => s.Primary) ?? Screens[0];
@@ -133,6 +136,20 @@ public sealed class Controller
     {
         if (Editor.Team == team) return;
         Editor.Team = team; Notify();
+    }
+    public void ApplyHeroData(HeroDataSnapshot data)
+    {
+        HeroData = data; Assets.UseHeroData(data);
+        Overlay.Board.Heroes = Heroes.Heroes;
+        Panel.RefreshHeroCatalog(); Overlay.Refresh(); Server.UpdateHeroes(Heroes); Notify();
+    }
+    public string? SetAutomaticHeroUpdates(bool enabled)
+    {
+        bool before = Settings.AutomaticallyUpdateHeroes; Settings.AutomaticallyUpdateHeroes = enabled;
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { Settings.AutomaticallyUpdateHeroes = before; return "英雄自动更新设置未能保存，请稍后重试。"; }
+        return null;
     }
     public bool AddHeroes(IReadOnlyList<Hero> heroes)
     {

@@ -25,6 +25,9 @@ check(ellipse.localName === 'ellipse' && ellipse.getAttribute('rx') === '100' &&
 check(rect.getAttribute('x') === '100' && rect.getAttribute('y') === '100' && rect.getAttribute('width') === '200' && rect.getAttribute('height') === '100', 'reverse rectangle normalized');
 check(svg.children[5].querySelector('text').style.display !== 'none', 'global names enabled');
 check(svg.children[5].children[2].getAttribute('stroke') === '#39A9FF', 'ally blue');
+render({ ...scene, heroCatalog: { ana: '安娜（更新）' }, heroRevision: 'revision 1' });
+check(svg.children[5].querySelector('text').textContent === '安娜（更新）', 'live catalog updates existing hero labels');
+check(svg.children[5].querySelector('image').getAttribute('href') === '/heroes/ana.png?v=revision%201', 'live portrait revisions invalidate the browser image cache');
 render({ ...scene, showHeroNames: false, items: [...shapes.map(s => ({ ...s, dashed: false })), { ...hero, team: 'enemy' }] });
 for (const group of [...svg.children].slice(0, 5)) check(group.children[0].getAttribute('stroke-dasharray') === 'none', 'dash can reset');
 check(svg.children[5].querySelector('text').style.display === 'none', 'global names disabled');

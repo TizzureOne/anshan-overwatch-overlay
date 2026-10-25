@@ -12,7 +12,7 @@ using System.Windows.Media.Imaging;
 
 namespace AnshanOverlay;
 
-public sealed record Hero(string Id, string Name, string EnglishName, string Role, string Aliases, string Image)
+public sealed record Hero(string Id, string Name, string EnglishName, string Role, string Aliases, string Image, string SourceUrl = "", string Sha256 = "")
 {
     [JsonIgnore] public BitmapSource Portrait => Assets.Portrait(Id);
     [JsonIgnore] public string RoleName => Role switch { "tank" => "重装", "damage" => "输出", _ => "支援" };
@@ -24,6 +24,7 @@ public static class Assets
 {
     public static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = false };
     private static readonly Dictionary<string, BitmapSource> images = new();
+    private static IReadOnlyDictionary<string, byte[]> heroOverrides = new Dictionary<string, byte[]>();
     public static byte[] Read(string path)
     {
         using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("AnshanOverlay." + path.Replace('/', '.'))
@@ -37,10 +38,16 @@ public static class Assets
         var icon = BitmapFrame.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad); icon.Freeze(); return icon;
     }
     public static HeroManifest LoadHeroes() => JsonSerializer.Deserialize<HeroManifest>(Read("Assets/heroes.json"), Json)!;
+    public static byte[] ReadPortrait(string id) => System.Threading.Volatile.Read(ref heroOverrides).TryGetValue(id, out var bytes) ? bytes : Read($"Assets/Heroes/{id}.png");
+    public static void UseHeroData(HeroDataSnapshot data)
+    {
+        System.Threading.Volatile.Write(ref heroOverrides, data.Portraits);
+        images.Clear();
+    }
     public static BitmapSource Portrait(string id)
     {
         if (images.TryGetValue(id, out var cached)) return cached;
-        using var stream = new MemoryStream(Read($"Assets/Heroes/{id}.png"));
+        using var stream = new MemoryStream(ReadPortrait(id));
         var bitmap = new BitmapImage(); bitmap.BeginInit(); bitmap.CacheOption = BitmapCacheOption.OnLoad;
         bitmap.StreamSource = stream; bitmap.EndInit(); bitmap.Freeze(); images[id] = bitmap; return bitmap;
     }

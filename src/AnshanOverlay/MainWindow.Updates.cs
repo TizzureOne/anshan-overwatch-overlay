@@ -25,8 +25,9 @@ public partial class MainWindow
         if (updateChecksStarted) return; updateChecksStarted = true;
         updateTimer.Tick += async (_, _) => { if (controller.Settings.AutomaticallyCheckUpdates) await CheckForUpdatesAsync(); };
         if (controller.Settings.AutomaticallyCheckUpdates) { updateTimer.Start(); _ = CheckForUpdatesAsync(); }
+        if (controller.Settings.AutomaticallyUpdateHeroes) _ = CheckHeroDataAsync();
     }
-    public void StopUpdateChecks() { updateTimer.Stop(); updateCancellation?.Cancel(); }
+    public void StopUpdateChecks() { updateTimer.Stop(); updateCancellation?.Cancel(); heroDataCancellation?.Cancel(); }
     private void SetUpdateBusy(bool busy)
     {
         updateBusy = busy;
