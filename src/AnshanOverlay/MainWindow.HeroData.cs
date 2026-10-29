@@ -32,15 +32,16 @@ public partial class MainWindow
         HeroDataStateText.Text = "正在核对官方英雄名单…";
         try
         {
+            using var client = service is null ? NetworkProxy.CreateClient(controller.Settings, heroData: true) : null;
             var progress = new Progress<string>(value => { if (heroDataBusy) HeroDataStateText.Text = value; });
-            var result = await (service ?? new HeroDataUpdates()).UpdateAsync(controller.HeroData, progress, heroDataCancellation.Token);
+            var result = await (service ?? new HeroDataUpdates(client)).UpdateAsync(controller.HeroData, progress, heroDataCancellation.Token);
             if (controller.IsClosing) return;
             if (result.HasChanges) controller.ApplyHeroData(result.Data);
             HeroDataStateText.Text = result.HasChanges ? $"已更新：新增 {result.Added} 位、调整 {result.Updated} 位。英雄库、画布和 OBS 已同步。" : $"英雄数据已是最新 · {DateTime.Now:MM-dd HH:mm} 已核对官方资料。";
         }
         catch (OperationCanceledException)
         { HeroDataStateText.Text = heroDataCancellation.IsCancellationRequested ? "已取消更新，继续使用已有英雄数据。" : "检查超时，继续使用已有英雄数据，可稍后重试。"; }
-        catch (HttpRequestException) { HeroDataStateText.Text = "暂时无法连接官方资料，继续使用已有英雄数据，可稍后重试。"; }
+        catch (HttpRequestException) { HeroDataStateText.Text = "暂时无法连接官方资料，请检查网络或代理设置；继续使用已有英雄数据。"; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or KeyNotFoundException or InvalidOperationException or NotSupportedException or ArgumentException or FileFormatException or RegexMatchTimeoutException)
         { HeroDataStateText.Text = "英雄资料未能完整校验或保存，继续使用已有数据，可稍后重试。"; }
         finally

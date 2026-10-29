@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -62,7 +63,7 @@ public sealed class ObsServer : IAsyncDisposable
                 await candidate.StartAsync(); app = candidate;
                 Port = new Uri(candidate.Urls.Single()).Port; return;
             }
-            catch (IOException) when (preferredPort != 0 && offset < 9) { await candidate.DisposeAsync(); }
+            catch (Exception ex) when (preferredPort != 0 && offset < 9 && (ex is IOException || ex is SocketException { SocketErrorCode: SocketError.AddressAlreadyInUse or SocketError.AccessDenied })) { await candidate.DisposeAsync(); }
             catch { await candidate.DisposeAsync(); throw; }
         }
     }

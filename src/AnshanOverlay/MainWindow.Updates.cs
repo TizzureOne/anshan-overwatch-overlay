@@ -13,7 +13,6 @@ namespace AnshanOverlay;
 
 public partial class MainWindow
 {
-    private readonly AppUpdates updates = new();
     private readonly DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromHours(12) };
     private CancellationTokenSource? updateCancellation;
     private UpdateRelease? availableUpdate;
@@ -45,11 +44,13 @@ public partial class MainWindow
         updateCancellation = new CancellationTokenSource(); SetUpdateBusy(true); Motion.Text(UpdateStateText, "正在检查更新…");
         try
         {
+            using var client = NetworkProxy.CreateClient(controller.Settings);
+            var updates = new AppUpdates(client);
             ShowAvailableUpdate(await updates.CheckAsync(BuildInfo.Version, controller.Settings.IncludeBetaUpdates, BuildInfo.Edition, updateCancellation.Token));
         }
         catch (OperationCanceledException) { Motion.Text(UpdateStateText, updateCancellation.IsCancellationRequested ? "已取消检查。" : "检查超时，请稍后重试或打开下载页。"); }
         catch (Exception ex) when (ex is HttpRequestException or JsonException or InvalidDataException or InvalidOperationException or System.Collections.Generic.KeyNotFoundException)
-        { Motion.Text(UpdateStateText, "暂时无法检查更新，请稍后重试或打开下载页。"); }
+        { Motion.Text(UpdateStateText, "暂时无法检查更新，请检查网络或代理设置后重试，也可打开下载页。"); }
         finally { SetUpdateBusy(false); updateCancellation.Dispose(); updateCancellation = null; }
     }
     internal void ShowAvailableUpdate(UpdateRelease? release)
@@ -62,10 +63,11 @@ public partial class MainWindow
         Motion.Text(UpdateStateText, release is null ? "暂无可用更新 · " + DateTime.Now.ToString("HH:mm") + " 已检查" : "有新版本，可查看说明后更新。");
         InstallUpdateButton.IsEnabled = !updateBusy && release is not null;
         if (release is not null) Motion.Reveal(UpdateNotice);
+        controller.LectureBar?.Refresh();
     }
     private async void CheckUpdateClick(object sender, RoutedEventArgs e) => await CheckForUpdatesAsync();
     private void CancelUpdateClick(object sender, RoutedEventArgs e) => updateCancellation?.Cancel();
-    private void ShowUpdatesClick(object sender, RoutedEventArgs e) => MainTabs.SelectedItem = UpdatesTab;
+    private void ShowUpdatesClick(object sender, RoutedEventArgs e) => controller.ShowPanelPage(3);
     private void OpenReleasesClick(object sender, RoutedEventArgs e)
     {
         try { Process.Start(new ProcessStartInfo(availableUpdate?.Page.AbsoluteUri ?? AppUpdates.ReleasesPage) { UseShellExecute = true }); }
@@ -96,6 +98,8 @@ public partial class MainWindow
         Motion.Text(UpdateStateText, "正在下载更新…");
         try
         {
+            using var client = NetworkProxy.CreateClient(controller.Settings);
+            var updates = new AppUpdates(client);
             string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "Updates", Guid.NewGuid().ToString("N"));
             string installer = await updates.DownloadAsync(release, directory, new Progress<int>(value => { Motion.To(UpdateProgress, System.Windows.Controls.Primitives.RangeBase.ValueProperty, value, 120); UpdateStateText.Text = $"正在下载更新 · {value}%"; }), updateCancellation.Token);
             updateCancellation.Token.ThrowIfCancellationRequested();
@@ -107,12 +111,12 @@ public partial class MainWindow
         catch (OperationCanceledException) { Motion.Text(UpdateStateText, "已取消下载，当前版本可继续使用。"); }
         catch (InvalidDataException) { Motion.Text(UpdateStateText, "安装包校验未通过，请重试下载或打开下载页。"); }
         catch (Exception ex) when (ex is HttpRequestException or IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
-        { Motion.Text(UpdateStateText, "更新尚未开始，请检查网络、保存位置权限后重试，或打开下载页。"); }
+        { Motion.Text(UpdateStateText, "更新尚未开始，请检查网络、代理设置或保存位置权限后重试，也可打开下载页。"); }
         finally { SetUpdateBusy(false); UpdateProgress.Visibility = Visibility.Collapsed; updateCancellation?.Dispose(); updateCancellation = null; }
     }
     public void ShowUpdateResult(int exitCode, string targetVersion)
     {
-        MainTabs.SelectedItem = UpdatesTab;
+        controller.ShowPanelPage(3);
         Motion.Text(UpdateStateText, exitCode == 0 && BuildInfo.Version == targetVersion ? "更新完成 · 当前版本 " + BuildInfo.Version : "更新未完成 · 当前仍为 " + BuildInfo.Version + "，可重试或打开下载页。");
     }
     private void TabChanged(object sender, SelectionChangedEventArgs e)

@@ -14,7 +14,6 @@ public partial class MainWindow : Window
 {
     private readonly Controller controller;
     private bool ready;
-    private bool closePromptOpen;
     private string role = "tank";
     private Point heroDragOrigin;
     private bool draggedHero;
@@ -27,10 +26,15 @@ public partial class MainWindow : Window
     public MainWindow(Controller controller)
     {
         this.controller = controller; InitializeComponent();
-        Title = "安山守望 · " + BuildInfo.Label; VersionText.Text = BuildInfo.Label;
+        Title = "安山守望 · 英雄库"; VersionText.Text = BuildInfo.Label;
         CurrentVersionText.Text = "当前版本 " + BuildInfo.Version + " · " + BuildInfo.EditionName;
         AutomaticUpdates.IsChecked = controller.Settings.AutomaticallyCheckUpdates; BetaUpdates.IsChecked = controller.Settings.IncludeBetaUpdates; AnimateUi.IsChecked = controller.Settings.AnimateInterface;
         AutomaticHeroUpdates.IsChecked = controller.Settings.AutomaticallyUpdateHeroes;
+        HighFrameRate.IsChecked = controller.Settings.HighFrameRate;
+        SelectionSettingsHost.Children.Add(new SelectionAppearancePanel(controller));
+        ProxyModeChoice.SelectedIndex = (int)controller.Settings.ProxyMode;
+        ProxyAddressBox.Text = controller.Settings.ProxyAddress;
+        ProxyAddressBox.IsEnabled = controller.Settings.ProxyMode == NetworkProxyMode.Manual;
         HeroDataStateText.Text = controller.HeroDataWarning ?? "尚未检查英雄数据。";
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         Loaded += (_, _) => Motion.Reveal(ExpandedPanel);
@@ -46,7 +50,7 @@ public partial class MainWindow : Window
             if (controller.IsClosing) return;
             e.Cancel = true;
             // Finish the native close event before hiding or closing this window again.
-            Dispatcher.BeginInvoke(new Action(() => RequestPanelClose()));
+            Dispatcher.BeginInvoke(new Action(ClosePanel));
         };
         Closed += (_, _) => dragPreview?.Close();
         PreviewKeyDown += (_, e) =>
@@ -62,10 +66,9 @@ public partial class MainWindow : Window
     public void Refresh()
     {
         if (!ready) return;
-        ModeText.Text = (controller.PassThrough ? "开始标注" : "返回游戏") + "  " + controller.BindingText("edit");
-        Motion.Text(ModeStateText, controller.PassThrough ? "● 鼠标穿透" : "● 正在标注");
+        Motion.Text(ModeStateText, "● " + controller.ModeState);
         ModeStateText.Foreground = BoardView.Brush(controller.PassThrough ? "#1482D4" : "#A55B00");
-        Motion.Text(FoldedModeText, (controller.PassThrough ? "穿透中" : "编辑中") + " · " + controller.BindingText("edit"));
+        Motion.Text(FoldedModeText, controller.ModeState + " · " + controller.BindingText("edit"));
         FoldedModeText.Foreground = ModeStateText.Foreground;
         ModeStateText.ToolTip = FoldedModeText.ToolTip = controller.ModeShortcut;
         ShortcutHelp.Text = string.Join("\n", Preferences.Actions.Select(a => $"{controller.BindingText(a.Id)}    {a.Label}"));
@@ -78,14 +81,7 @@ public partial class MainWindow : Window
         HotkeyWarningText.Text = controller.HotkeyWarning;
         PassThroughOpacity.Value = controller.Settings.PassThroughOpacityPercent;
         PassThroughOpacityText.Text = controller.Settings.PassThroughOpacityPercent + "%";
-        CloseBehaviorChoice.SelectedIndex = (int)controller.Settings.CloseBehavior;
-        CloseBehaviorHint.Text = "仅关闭界面时，画布和工具栏继续运行。" + controller.PanelRestoreHint;
-        ClosePanelButton.ToolTip = controller.Settings.CloseBehavior switch
-        {
-            PanelCloseBehavior.HidePanel => "仅关闭界面 · 画布与工具栏继续运行",
-            PanelCloseBehavior.Exit => "退出程序 · 保存场景并关闭所有窗口",
-            _ => "关闭 · 询问退出程序或仅关闭界面"
-        };
+        ClosePanelButton.ToolTip = "关闭英雄库 · 战术板和工具继续运行";
         Motion.Text(ObjectCount, $"{controller.Store.Current.Items.Count(i => i.Kind == "hero")} 个英雄  /  {controller.Store.Current.Items.Count(i => i.Kind != "hero")} 个标注");
         UndoButton.IsEnabled = controller.Store.CanUndo; RedoButton.IsEnabled = controller.Store.CanRedo;
         ObsUrl.Text = controller.Server.Port == 0 ? "OBS 服务未启动" : controller.Server.Url;
@@ -99,7 +95,7 @@ public partial class MainWindow : Window
         string query = SearchBox.Text.Trim();
         var heroes = controller.Heroes.Heroes.Where(h => (role == "all" || h.Role == role) && h.Matches(query)).ToList();
         HeroList.ItemsSource = heroes;
-        SearchHint.Text = query.Length == 0 ? $"拖出头像放置到画布 · {heroes.Count} 位英雄" : $"找到 {heroes.Count} 位英雄 · 拖出头像放置";
+        SearchHint.Text = query.Length == 0 ? $"双击居中添加 · 拖出自由放置 · {heroes.Count} 位英雄" : $"找到 {heroes.Count} 位英雄 · 双击或拖出添加";
         EmptySearch.Visibility = heroes.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         HeroScroll.ScrollToTop();
     }
@@ -115,43 +111,28 @@ public partial class MainWindow : Window
         ResizeMode = folded ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
         Motion.Reveal(folded ? FoldedPanel : ExpandedPanel);
     }
-    public void ClosePanel() { dragPreview?.End(); Hide(); }
-    internal void RequestPanelClose(PanelCloseBehavior? behavior = null)
+    public void ClosePanel() { if (controller.IsClosing) return; dragPreview?.End(); controller.HeroLibraryOpen = false; Motion.HideWindow(this); controller.LectureBar?.Refresh(); }
+    internal TabItem[] DetachManagementPages()
     {
-        if (controller.IsClosing) return;
-        switch (behavior ?? controller.Settings.CloseBehavior)
-        {
-            case PanelCloseBehavior.HidePanel: ClosePanel(); break;
-            case PanelCloseBehavior.Exit: controller.Close(); break;
-            default:
-                if (closePromptOpen) return;
-                closePromptOpen = true;
-                try { new CloseBehaviorWindow(controller).ShowDialog(); }
-                finally { closePromptOpen = false; }
-                break;
-        }
+        var pages = MainTabs.Items.Cast<TabItem>().Skip(1).ToArray();
+        foreach (var page in pages) MainTabs.Items.Remove(page);
+        return pages;
     }
-    private void CloseBehaviorChanged(object sender, SelectionChangedEventArgs e)
+    private void HighFrameRateChanged(object sender, RoutedEventArgs e)
     {
-        if (!ready || CloseBehaviorChoice.SelectedIndex < 0) return;
-        var behavior = (PanelCloseBehavior)CloseBehaviorChoice.SelectedIndex;
-        if (behavior == controller.Settings.CloseBehavior) return;
-        if (controller.SetPanelCloseBehavior(behavior) is { } error)
-        {
-            CloseBehaviorChoice.SelectedIndex = (int)controller.Settings.CloseBehavior;
-            controller.SetStatus(error);
-        }
+        if (!ready) return;
+        if (controller.SetHighFrameRate(HighFrameRate.IsChecked == true) is { } error) { HighFrameRate.IsChecked = controller.Settings.HighFrameRate; controller.SetStatus(error); }
     }
     private void FoldClick(object s, RoutedEventArgs e) => SetFolded(true);
     private void ExpandClick(object s, RoutedEventArgs e) => SetFolded(false);
     private void MinimizeClick(object s, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    private void CloseClick(object s, RoutedEventArgs e) => RequestPanelClose();
+    private void CloseClick(object s, RoutedEventArgs e) => ClosePanel();
     internal ContextMenu CreateMoreMenu()
     {
         var menu = new ContextMenu();
         void Add(string label, Action action) { var item = new MenuItem { Header = label }; item.Click += (_, _) => action(); menu.Items.Add(item); }
         Add("自定义快捷键…", controller.ShowShortcuts);
-        Add("设置与更新", () => { SetFolded(false); MainTabs.SelectedItem = UpdatesTab; });
+        Add("设置与更新", () => controller.ShowPanelPage(3));
         menu.Items.Add(new Separator());
         Add("退出程序", controller.Close);
         return menu;
@@ -236,7 +217,15 @@ public partial class MainWindow : Window
     {
         batchHeroes.Clear(); UpdateBatchControls(); RefreshHeroButtons();
     }
-    private void HeroDragStart(object s, MouseButtonEventArgs e) { heroDragOrigin = e.GetPosition(this); draggedHero = false; }
+    private void HeroDragStart(object s, MouseButtonEventArgs e)
+    {
+        heroDragOrigin = e.GetPosition(this); draggedHero = false;
+    }
+    private void HeroDoubleClick(object s, MouseButtonEventArgs e)
+    {
+        if (s is not Button { Tag: Hero hero }) return;
+        draggedHero = true; controller.AddHeroAtCenter(hero); e.Handled = true;
+    }
     public void CancelHeroPreview() => dragPreview?.End();
     public void FinishHeroDrag(bool wasPassThrough)
     {

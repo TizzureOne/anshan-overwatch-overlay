@@ -58,6 +58,9 @@ public sealed record SceneItem
     public string Id { get; init; } = Guid.NewGuid().ToString("N");
     public string Kind { get; init; } = "hero";
     public string HeroId { get; init; } = "";
+    public string Text { get; init; } = "";
+    public double FontSize { get; init; } = 28;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double TextWidth { get; init; }
     public double X { get; init; }
     public double Y { get; init; }
     public double X2 { get; init; }
@@ -68,18 +71,24 @@ public sealed record SceneItem
     public double Opacity { get; init; } = 1;
     public List<EraseMark> Erasures { get; init; } = new();
     public bool Dashed { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double TrailDashOffset { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<HeroTrailBand>? TrailBands { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool IsHeroTrail { get; init; }
     public bool Arrow { get; init; }
     public string Team { get; init; } = "ally";
     public List<InkPoint> Points { get; init; } = new();
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public LabelMetrics? Label => Annotation.IsLabel(this) ? Annotation.Metrics(this) : null;
     [JsonIgnore] public string HeroBorder => Team == "enemy" ? "#F05265" : "#39A9FF";
     [JsonIgnore] public Point Start => new(X, Y);
     [JsonIgnore] public Point End => new(X2, Y2);
 }
 public sealed record InkPoint(double X, double Y);
+public sealed record HeroTrailBand(double Width, double Opacity, List<InkPoint> Points);
+public sealed record LabelMetrics(double Width, double Height, double Baseline, string[]? Lines = null, double LineHeight = 0);
 public sealed record EraseMark(double X, double Y, double X2, double Y2, double Radius);
 public sealed record Scene
 {
-    public int Version { get; init; } = 2;
+    public int Version { get; init; } = 4;
     public double Width { get; init; } = 1920;
     public double Height { get; init; } = 1080;
     public bool Visible { get; init; } = true;
@@ -113,11 +122,12 @@ public sealed class SceneStore
     {
         var s = JsonSerializer.Deserialize<Scene>(json, Assets.Json) ?? throw new InvalidDataException("Empty scene");
         bool Finite(double n) => double.IsFinite(n) && Math.Abs(n) <= 100000;
-        if ((s.Version != 1 && s.Version != 2) || !Finite(s.Width) || !Finite(s.Height) || s.Width < 320 || s.Height < 200 || s.Width > 16000 || s.Height > 16000 || s.Items is null || s.Items.Count > MaxItems)
+        if ((s.Version < 1 || s.Version > 4) || !Finite(s.Width) || !Finite(s.Height) || s.Width < 320 || s.Height < 200 || s.Width > 16000 || s.Height > 16000 || s.Items is null || s.Items.Count > MaxItems)
             throw new InvalidDataException("Invalid scene dimensions, version or item count");
         var ids = new HashSet<string>();
         foreach (var i in s.Items)
-            if (i is null || string.IsNullOrEmpty(i.Id) || !ids.Add(i.Id) || (i.Kind != "hero" && i.Kind != "line" && i.Kind != "path" && i.Kind != "circle" && i.Kind != "rectangle") ||
+            if (i is null || i.IsHeroTrail || i.TrailBands is not null || string.IsNullOrEmpty(i.Id) || !ids.Add(i.Id) || (i.Kind != "hero" && i.Kind != "line" && i.Kind != "path" && i.Kind != "circle" && i.Kind != "rectangle" && !Annotation.IsLabel(i)) ||
+                (Annotation.IsLabel(i) && (!Annotation.ValidText(i.Text) || !double.IsFinite(i.FontSize) || i.FontSize < 8 || i.FontSize > 96 || !Finite(i.TextWidth) || i.TextWidth < 0 || i.TextWidth > 16000 || (i.Kind == "number" && (!int.TryParse(i.Text, out int number) || number < 1 || number > 9999)))) ||
                 (i.Kind == "hero" && !heroes.Any(h => h.Id == i.HeroId)) || i.Color is null || !Regex.IsMatch(i.Color, "^#[0-9a-fA-F]{6}$") ||
                 !double.IsFinite(i.Opacity) || i.Opacity < 0 || i.Opacity > 1 || i.Erasures is null || i.Erasures.Count > 20000 || i.Erasures.Any(e => e is null || !new[] { e.X, e.Y, e.X2, e.Y2, e.Radius }.All(Finite) || e.Radius <= 0 || e.Radius > 1000) ||
                 (i.Team != "ally" && i.Team != "enemy") || i.Points is null || i.Points.Count > 20000 || i.Points.Any(p => p is null || !Finite(p.X) || !Finite(p.Y)) ||
@@ -126,7 +136,7 @@ public sealed class SceneStore
         using var legacy = JsonDocument.Parse(json);
         if (!legacy.RootElement.TryGetProperty("showHeroNames", out _) && legacy.RootElement.TryGetProperty("items", out _))
             s = s with { ShowHeroNames = legacy.RootElement.GetProperty("items").EnumerateArray().Any(i => i.TryGetProperty("label", out var label) && label.ValueKind == JsonValueKind.True) };
-        return s with { Version = 2 };
+        return s with { Version = 4 };
     }
     public void Resize(double width, double height)
     {
@@ -144,22 +154,28 @@ public sealed class SceneStore
         return s with { Width = width, Height = height, Items = s.Items.Select(i => i with {
             X = i.X * scale + ox, Y = i.Y * scale + oy, X2 = i.X2 * scale + ox, Y2 = i.Y2 * scale + oy,
             Size = Math.Clamp(i.Size * scale, 24, 400), Width = Math.Clamp(i.Width * scale, 1, 30),
+            FontSize = Math.Clamp(i.FontSize * scale, 8, 96),
+            TextWidth = i.TextWidth * scale,
             Points = i.Points.Select(p => new InkPoint(p.X * scale + ox, p.Y * scale + oy)).ToList(),
             Erasures = i.Erasures.Select(e => new EraseMark(e.X * scale + ox, e.Y * scale + oy, e.X2 * scale + ox, e.Y2 * scale + oy, Math.Min(1000, e.Radius * scale))).ToList() }).ToList() };
     }
 }
 
-public enum EditorTool { Move, Brush, Line, Arrow, Circle, Rectangle, Eraser }
+public enum EditorTool { Move, Brush, Line, Arrow, Circle, Rectangle, Eraser, Text }
 public sealed class ToolSettings
 {
     public string Color { get; set; } = "#FFD166";
     public double Width { get; set; } = 5;
+    public double FontSize { get; set; } = 28;
 }
 
 public sealed class Editor
 {
     public readonly SceneStore Store;
     public EditorTool Tool { get; set; }
+    public bool TemporaryBrush { get; set; }
+    internal TemporaryInk Temporary { get; } = new();
+    internal HeroTrails Trails { get; } = new();
     public Dictionary<EditorTool, ToolSettings> Settings { get; } = Enum.GetValues<EditorTool>().ToDictionary(t => t, _ => new ToolSettings());
     public ToolSettings Options => Settings[Tool];
     public string Color { get => Options.Color; set => Options.Color = value; }
@@ -177,7 +193,7 @@ public sealed class Editor
     public SceneItem[] SelectedItems => Store.Current.Items.Where(i => selection.Contains(i.Id)).ToArray();
     public void Select(IEnumerable<string> ids) { selection.Clear(); selection.UnionWith(ids); }
     public Rect? SelectionBox { get; private set; }
-    public bool IsDragging => before is not null;
+    public bool IsDragging => before is not null || Temporary.IsDrawing;
     public bool IsMoving => before is not null && original is not null && (!selecting || !extendSelection && selectionMoved);
     private Scene? before;
     private SceneItem? original;
@@ -221,7 +237,15 @@ public sealed class Editor
         original = Store.Current.Items.AsEnumerable().Reverse().FirstOrDefault(i => i.Kind == "hero" && Hit(i, point));
         if (original is not null) { SelectedId = original.Id; return; }
         SelectedId = null;
+        if (Tool == EditorTool.Brush && TemporaryBrush)
+        {
+            before = null; Temporary.Begin(point, Color, Width, Dashed); return;
+        }
         if (Tool == EditorTool.Eraser) { erasing = true; lastErase = point; Erase(point); return; }
+        if (Tool == EditorTool.Text)
+        {
+            before = null; return;
+        }
         before = Store.Current; endpoint = 0;
         if (Tool is EditorTool.Line or EditorTool.Arrow or EditorTool.Circle or EditorTool.Rectangle or EditorTool.Brush)
         {
@@ -235,6 +259,7 @@ public sealed class Editor
     }
     public void Move(Point point, bool snap)
     {
+        if (Temporary.IsDrawing) { Temporary.Move(Clamp(point)); return; }
         if (before is null) return;
         point = Clamp(point);
         if (selecting)
@@ -292,13 +317,18 @@ public sealed class Editor
             delta.X = Math.Clamp(delta.X, -Math.Max(0, bounds.Left), Math.Max(0, Store.Current.Width - bounds.Right));
             delta.Y = Math.Clamp(delta.Y, -Math.Max(0, bounds.Top), Math.Max(0, Store.Current.Height - bounds.Bottom));
             var ids = moving.Select(i => i.Id).ToHashSet();
-            Store.Preview(before with { Items = before.Items.Select(i => ids.Contains(i.Id) ? Translate(i, delta) : i).ToList() });
+            var items = before.Items.Select(i => ids.Contains(i.Id) ? Translate(i, delta) : i).ToList();
+            for (int n = 0; n < items.Count; n++)
+                if (ids.Contains(items[n].Id) && items[n].Kind == "hero") Trails.Move(Store.Current.Items[n], items[n]);
+            Store.Preview(before with { Items = items });
             return;
         }
         Store.Replace(next);
     }
     public void Up()
     {
+        Trails.Complete();
+        if (Temporary.IsDrawing) { Temporary.Complete(); return; }
         if (before is null) return;
         var saved = before; before = null;
         if (selecting && !selectionMoved && !extendSelection && original is not null) SelectedId = original.Id;
@@ -309,6 +339,8 @@ public sealed class Editor
     }
     public void Cancel()
     {
+        Trails.Cancel();
+        Temporary.Cancel();
         if (selectionBefore is not null) { selection.Clear(); selection.UnionWith(selectionBefore); }
         SelectionBox = null; original = null; erasing = selecting = selectionMoved = false; selectionBefore = null;
         if (before is not null) { var s = before; before = null; Store.Preview(s); }
@@ -352,6 +384,7 @@ public sealed class Editor
         Erasures = item.Erasures.Select(e => e with { X = e.X + delta.X, Y = e.Y + delta.Y, X2 = e.X2 + delta.X, Y2 = e.Y2 + delta.Y }).ToList() };
     private static Rect MovementBounds(SceneItem item)
     {
+        if (Annotation.IsLabel(item)) return Annotation.Bounds(item);
         if (item.Kind == "hero") return new Rect(item.X - item.Size / 2, item.Y - item.Size / 2, item.Size, item.Size);
         if (item.Kind == "path" && item.Points.Count > 0)
             return new Rect(new Point(item.Points.Min(p => p.X), item.Points.Min(p => p.Y)), new Point(item.Points.Max(p => p.X), item.Points.Max(p => p.Y)));
@@ -359,6 +392,7 @@ public sealed class Editor
     }
     public static Rect SelectionBounds(SceneItem item)
     {
+        if (Annotation.IsLabel(item)) return Annotation.Bounds(item);
         if (item.Kind == "hero") { var bounds = MovementBounds(item); bounds.Inflate(1.5, 1.5); return bounds; }
         return Ink(item).Bounds;
     }
@@ -372,6 +406,12 @@ public sealed class Editor
         foreach (var item in Store.Current.Items)
         {
             if (item.Kind == "hero") { items.Add(item); continue; }
+            if (Annotation.IsLabel(item))
+            {
+                if (new RectangleGeometry(Annotation.Bounds(item)).FillContainsWithDetail(sweep) == IntersectionDetail.Empty) items.Add(item);
+                else changed = true;
+                continue;
+            }
             var ink = Ink(item);
             if (ink.FillContainsWithDetail(sweep) == IntersectionDetail.Empty) { items.Add(item); continue; }
             if (!EraseWhole && item.Erasures.Count >= 20000) { items.Add(item); continue; }
@@ -405,14 +445,7 @@ public sealed class Editor
         if (i.Kind == "circle") return new EllipseGeometry(new Rect(i.Start, i.End));
         if (i.Kind == "rectangle") return new RectangleGeometry(new Rect(i.Start, i.End));
         if (i.Kind == "path")
-        {
-            if (i.Points.Count < 2) return Geometry.Empty;
-            var path = new StreamGeometry();
-            using var g = path.Open();
-            g.BeginFigure(new Point(i.Points[0].X, i.Points[0].Y), false, false);
-            g.PolyLineTo(i.Points.Skip(1).Select(p => new Point(p.X, p.Y)).ToArray(), true, false);
-            return path;
-        }
+            return Path(i.Points);
         if (i.Arrow && (i.End - i.Start).Length > 1)
         {
             var direction = i.End - i.Start; double head = Math.Min(direction.Length * .7, Math.Max(16, i.Width * 3.5)); direction.Normalize();
@@ -427,8 +460,18 @@ public sealed class Editor
         }
         return new LineGeometry(i.Start, i.End);
     }
+    public static Geometry Path(IReadOnlyList<InkPoint> points)
+    {
+        if (points.Count < 2) return Geometry.Empty;
+        var path = new StreamGeometry();
+        using var g = path.Open();
+        g.BeginFigure(new Point(points[0].X, points[0].Y), false, false);
+        for (int n = 1; n < points.Count; n++) g.LineTo(new Point(points[n].X, points[n].Y), true, false);
+        return path;
+    }
     public static bool Hit(SceneItem i, Point point)
     {
+        if (Annotation.IsLabel(i)) return Annotation.Bounds(i).Contains(point);
         if (i.Kind == "hero") return (point - i.Start).Length <= i.Size / 2 + 5;
         if (i.Erasures.Count > 0 && ErasedArea(i).FillContains(point)) return false;
         var outline = Outline(i);

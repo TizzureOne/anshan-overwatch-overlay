@@ -26,7 +26,7 @@ public static class WindowLayout
         Math.Clamp(bounds.Left, workArea.Left, workArea.Left + Math.Max(0, workArea.Width - bounds.Width)),
         Math.Clamp(bounds.Top, workArea.Top, workArea.Top + Math.Max(0, workArea.Height - bounds.Height)));
 
-    private static void KeepVisible(Window window)
+    public static void KeepVisible(Window window)
     {
         var handle = new WindowInteropHelper(window).Handle;
         if (!Native.GetWindowRect(handle, out var frame)) return;

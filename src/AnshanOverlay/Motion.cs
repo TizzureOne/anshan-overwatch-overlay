@@ -10,6 +10,7 @@ public static class Motion
 {
     private sealed record ResizeState(double Height, double Minimum);
     private static readonly DependencyProperty ResizeStateProperty = DependencyProperty.RegisterAttached("ResizeState", typeof(ResizeState), typeof(Motion));
+    private static readonly DependencyProperty HidingProperty = DependencyProperty.RegisterAttached("Hiding", typeof(bool), typeof(Motion), new PropertyMetadata(false));
     public static bool Enabled { get; set; } = true;
     public static bool CanAnimate => Enabled && SystemParameters.ClientAreaAnimation;
     private static DoubleAnimation Transition(double from, double to, int milliseconds, int delay = 0) => new(from, to, TimeSpan.FromMilliseconds(milliseconds))
@@ -42,6 +43,46 @@ public static class Motion
         if (offset == 0) return;
         var translation = new TranslateTransform(); element.RenderTransform = translation;
         translation.BeginAnimation(TranslateTransform.YProperty, Transition(offset, 0, 180, delay));
+    }
+    public static void ShowWindow(Window window)
+    {
+        bool reveal = !window.IsVisible || (bool)window.GetValue(HidingProperty);
+        window.SetValue(HidingProperty, false);
+        if (window.Content is FrameworkElement content)
+        {
+            content.BeginAnimation(UIElement.OpacityProperty, null); content.Opacity = 1; content.IsHitTestVisible = true;
+            if (content.RenderTransform is TranslateTransform old) { old.BeginAnimation(TranslateTransform.YProperty, null); old.Y = 0; }
+        }
+        window.Show();
+        if (reveal && window.Content is FrameworkElement shown) Reveal(shown, offset: 8);
+    }
+    public static void HideWindow(Window window)
+    {
+        if (window.Content is not FrameworkElement content || !window.IsVisible || !CanAnimate) { window.Hide(); return; }
+        window.SetValue(HidingProperty, true); content.IsHitTestVisible = false;
+        var animation = Transition(content.Opacity, 0, 120);
+        animation.Completed += (_, _) =>
+        {
+            if (!(bool)window.GetValue(HidingProperty)) return;
+            window.SetValue(HidingProperty, false); window.Hide();
+            content.BeginAnimation(UIElement.OpacityProperty, null); content.Opacity = 1; content.IsHitTestVisible = true;
+        };
+        content.BeginAnimation(UIElement.OpacityProperty, animation);
+    }
+    public static void CancelWindowTransition(Window window)
+    {
+        window.SetValue(HidingProperty, false);
+        if (window.Content is FrameworkElement content)
+        {
+            content.BeginAnimation(UIElement.OpacityProperty, null); content.Opacity = 1; content.IsHitTestVisible = true;
+        }
+    }
+    public static void Cascade(ItemsControl items)
+    {
+        if (!CanAnimate) return;
+        for (int n = 0; n < items.Items.Count; n++)
+            if (items.ItemContainerGenerator.ContainerFromIndex(n) is FrameworkElement row)
+                Reveal(row, Math.Min(n, 5) * 12, 3);
     }
     public static void Pulse(FrameworkElement element)
     {
@@ -91,7 +132,7 @@ public static class Motion
     {
         if (sender is not Button button || button.Template.FindName("Bd", button) is not FrameworkElement face) return;
         var scale = ScaleFor(face);
-        double target = pressed ? .97 : button.IsMouseOver ? 1.015 : 1;
+        double target = pressed ? .96 : 1;
         double x = scale.ScaleX, y = scale.ScaleY;
         scale.BeginAnimation(ScaleTransform.ScaleXProperty, null); scale.BeginAnimation(ScaleTransform.ScaleYProperty, null); scale.ScaleX = scale.ScaleY = target;
         if (CanAnimate && button.IsLoaded)

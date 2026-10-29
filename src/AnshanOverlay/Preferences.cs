@@ -19,7 +19,7 @@ public enum PanelCloseBehavior { Ask, HidePanel, Exit }
 public sealed class Preferences
 {
     public static readonly ShortcutAction[] Actions = {
-        new("edit", "编辑 / 鼠标穿透", true, new(Key.E, ModifierKeys.Control | ModifierKeys.Alt)),
+        new("edit", "战术模式 / 桌面模式", true, new(Key.E, ModifierKeys.Control | ModifierKeys.Alt)),
         new("topmost", "画布置顶", true, new(Key.T, ModifierKeys.Control | ModifierKeys.Alt)),
         new("visible", "显示 / 隐藏标注", true, new(Key.H, ModifierKeys.Control | ModifierKeys.Alt)),
         new("panel", "唤出面板", true, new(Key.P, ModifierKeys.Control | ModifierKeys.Alt)),
@@ -27,24 +27,35 @@ public sealed class Preferences
         new("brush", "画笔", false, new(Key.B)), new("line", "直线", false, new(Key.L)),
         new("arrow", "箭头", false, new(Key.A)), new("circle", "椭圆", false, new(Key.C)),
         new("rectangle", "矩形", false, new(Key.R)), new("eraser", "橡皮擦", false, new(Key.E)),
+        new("text", "文字", false, new(Key.T)),
         new("dash", "全局虚线", false, new(Key.D)), new("names", "英雄名称", false, new(Key.N)),
         new("undo", "撤销", false, new(Key.Z, ModifierKeys.Control)), new("redo", "重做", false, new(Key.Y, ModifierKeys.Control)),
         new("duplicate", "复制选中", false, new(Key.D, ModifierKeys.Control)), new("delete", "删除选中", false, new(Key.Delete)),
         new("clear", "清空画布", false, new(Key.Delete, ModifierKeys.Control | ModifierKeys.Shift)),
         new("cancel", "取消操作 / 取消选择 / 穿透", false, new(Key.Escape)) };
     public Dictionary<string, Shortcut> Shortcuts { get; set; } = Actions.ToDictionary(a => a.Id, a => a.Default);
-    public double PanelWidth { get; set; } = 474;
-    public double PanelHeight { get; set; } = 900;
+    public double PanelWidth { get; set; } = 360;
+    public double PanelHeight { get; set; } = 620;
     public double ToolbarWidth { get; set; } = 680;
-    public double ToolbarHeight { get; set; } = 220;
+    public double ToolbarHeight { get; set; } = 180;
     public WindowPosition? PanelPosition { get; set; }
     public WindowPosition? ToolbarPosition { get; set; }
+    public double LectureBarWidth { get; set; } = 680;
+    public WindowPosition? LectureBarPosition { get; set; }
+    public bool LectureToolsFolded { get; set; }
     public bool AutomaticallyCheckUpdates { get; set; } = true;
     public bool AutomaticallyUpdateHeroes { get; set; } = true;
+    public NetworkProxyMode ProxyMode { get; set; } = NetworkProxyMode.System;
+    public string ProxyAddress { get; set; } = "";
     public bool IncludeBetaUpdates { get; set; } = BuildInfo.IsBeta;
     public bool AnimateInterface { get; set; } = true;
+    public bool HighFrameRate { get; set; }
+    public SelectionAppearance HeroSelection { get; set; } = new();
     public PanelCloseBehavior CloseBehavior { get; set; } = PanelCloseBehavior.Ask;
     public int PassThroughOpacityPercent { get; set; } = 50;
+    public bool HeroTrailsEnabled { get; set; }
+    public HeroTrailStyle HeroTrailStyle { get; set; } = HeroTrailStyle.Dashed;
+    public int HeroTrailSeconds { get; set; } = 3;
     public static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "settings.json");
     public static string? Validate(Dictionary<string, Shortcut> shortcuts)
     {
@@ -64,7 +75,17 @@ public sealed class Preferences
     public static Preferences Load(out string? warning, string? path = null)
     {
         warning = null;
-        try { return Read(path ?? FilePath); }
+        try
+        {
+            var value = Read(path ?? FilePath);
+            value.ProxyAddress ??= "";
+            if (!Enum.IsDefined(value.ProxyMode) || value.ProxyMode == NetworkProxyMode.Manual && !NetworkProxy.TryParseAddress(value.ProxyAddress, out _))
+            {
+                value.ProxyMode = NetworkProxyMode.System; value.ProxyAddress = "";
+                warning = "代理设置无效，已恢复跟随系统；请在设置中重新填写。";
+            }
+            return value;
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidDataException)
         { warning = "设置无法读取，已使用默认快捷键和尺寸。"; return new(); }
     }
@@ -73,11 +94,23 @@ public sealed class Preferences
         if (!File.Exists(path)) return new();
         var value = JsonSerializer.Deserialize<Preferences>(File.ReadAllText(path), Assets.Json) ?? new();
         value.Shortcuts ??= new();
-        foreach (var action in Actions) value.Shortcuts.TryAdd(action.Id, action.Default);
+        value.Shortcuts.Remove("number");
+        foreach (var action in Actions)
+            value.Shortcuts.TryAdd(action.Id, value.Shortcuts.Values.Contains(action.Default) ? new Shortcut(Key.None) : action.Default);
         if (Validate(value.Shortcuts) is { } error) throw new InvalidDataException(error);
+        // Shrink the old default layout on first use of the lecture bar; retain custom sizes.
+        if (value.LectureBarPosition is null)
+        {
+            if (value.PanelWidth == 474 && value.PanelHeight == 900) { value.PanelWidth = 360; value.PanelHeight = 620; }
+            if (value.ToolbarHeight == 220) value.ToolbarHeight = 180;
+        }
         value.PanelWidth = Size(value.PanelWidth, 340, 2400, 474); value.PanelHeight = Size(value.PanelHeight, 420, 2000, 900);
         value.ToolbarWidth = Size(value.ToolbarWidth, 300, 2400, 680); value.ToolbarHeight = Size(value.ToolbarHeight, 150, 1400, 180);
+        value.LectureBarWidth = Size(value.LectureBarWidth, 340, 2400, 680);
         value.PassThroughOpacityPercent = Math.Clamp(value.PassThroughOpacityPercent, 0, 100);
+        value.HeroSelection = (value.HeroSelection ?? new()).Normalize();
+        value.HeroTrailSeconds = Math.Clamp(value.HeroTrailSeconds, 1, 10);
+        if (!Enum.IsDefined(value.HeroTrailStyle)) value.HeroTrailStyle = HeroTrailStyle.Dashed;
         if (!Enum.IsDefined(value.CloseBehavior)) value.CloseBehavior = PanelCloseBehavior.Ask;
         return value;
     }

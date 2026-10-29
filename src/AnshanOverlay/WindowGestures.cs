@@ -12,7 +12,7 @@ public static class WindowGestures
     {
         while (target is not null)
         {
-            if (target is ButtonBase or TextBoxBase or RangeBase or ComboBox or Thumb or TabItem) return true;
+            if (target is ButtonBase or TextBoxBase or RangeBase or ComboBox or ComboBoxItem or MenuItem or Thumb or TabItem) return true;
             target = target is Visual ? VisualTreeHelper.GetParent(target) : LogicalTreeHelper.GetParent(target);
         }
         return false;

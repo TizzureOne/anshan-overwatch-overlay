@@ -13,12 +13,16 @@ public sealed class BoardView : FrameworkElement
     public static readonly DependencyProperty VisibilityProgressProperty = Progress("VisibilityProgress", 1);
     public static readonly DependencyProperty HeroProgressProperty = Progress("HeroProgress", 1);
     public static readonly DependencyProperty SelectionProgressProperty = Progress("SelectionProgress", 1);
+    public static readonly DependencyProperty ClickProgressProperty = Progress("ClickProgress", 1);
     private static DependencyProperty Progress(string name, double value) => DependencyProperty.Register(name, typeof(double), typeof(BoardView), new FrameworkPropertyMetadata(value, FrameworkPropertyMetadataOptions.AffectsRender));
     private Scene scene = new();
     private IReadOnlySet<string> selectedIds = new HashSet<string>();
     private HashSet<string> enteringHeroes = new();
     private bool editing;
     private double passThroughOpacity = .5;
+    private Point clickPosition;
+    public SelectionAppearance HeroSelection { get; set; } = new();
+    internal string? EditingTextId { get; set; }
     public Scene Scene
     {
         get => scene;
@@ -45,7 +49,16 @@ public sealed class BoardView : FrameworkElement
     }
     public Rect? SelectionBox { get; set; }
     public string? DraggedHeroId { get; set; }
-    public bool Editing { get => editing; set { editing = value; Motion.To(this, ModeOpacityProperty, value ? 1 : PassThroughOpacity); } }
+    public bool Editing
+    {
+        get => editing;
+        set
+        {
+            editing = value;
+            if (!value) { BeginAnimation(ClickProgressProperty, null); SetValue(ClickProgressProperty, 1d); }
+            Motion.To(this, ModeOpacityProperty, value ? 1 : PassThroughOpacity);
+        }
+    }
     public bool DrawEditorChrome { get; set; } = true;
     public double PassThroughOpacity { get => passThroughOpacity; set { passThroughOpacity = value; Motion.To(this, ModeOpacityProperty, Editing ? 1 : value); } }
     public string ModeHint { get; set; } = "";
@@ -53,6 +66,12 @@ public sealed class BoardView : FrameworkElement
     public double EraserRadius { get; set; }
     public IReadOnlyList<Hero> Heroes { get; set; } = Array.Empty<Hero>();
     public BoardView() { Focusable = true; ClipToBounds = true; }
+    public void ShowClick(Point point)
+    {
+        if (!Editing || !DrawEditorChrome || !Scene.Visible || !Motion.CanAnimate) return;
+        clickPosition = point;
+        Motion.Start(this, ClickProgressProperty, 0, 420);
+    }
     public static SolidColorBrush Brush(string hex)
     {
         var b = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); b.Freeze(); return b;
@@ -69,9 +88,11 @@ public sealed class BoardView : FrameworkElement
         double selectionProgress = (double)GetValue(SelectionProgressProperty);
         foreach (var item in Scene.Items)
         {
+            if (DrawEditorChrome && item.Id == EditingTextId) continue;
+            if (item.IsHeroTrail) { DrawHeroTrail(dc, item, sceneOpacity); continue; }
             bool entering = DrawEditorChrome && item.Kind == "hero" && enteringHeroes.Contains(item.Id);
             double progress = entering ? (double)GetValue(HeroProgressProperty) : 1;
-            dc.PushOpacity(item.Opacity * modeOpacity * sceneOpacity * (.45 + .55 * progress) * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
+            dc.PushOpacity(item.Opacity * (item.Kind == "hero" ? modeOpacity : 1) * sceneOpacity * (.45 + .55 * progress) * (DrawEditorChrome && Editing && item.Kind == "hero" && item.Id == DraggedHeroId ? .55 : 1));
             if (entering) dc.PushTransform(new ScaleTransform(.88 + .12 * progress, .88 + .12 * progress, item.X, item.Y));
             if (item.Erasures.Count > 0) dc.PushClip(Geometry.Combine(new RectangleGeometry(new Rect(0, 0, Scene.Width, Scene.Height)), Editor.ErasedArea(item), GeometryCombineMode.Exclude, null));
             var color = Brush(item.Kind == "hero" ? item.HeroBorder : item.Color);
@@ -91,6 +112,13 @@ public sealed class BoardView : FrameworkElement
                     dc.DrawText(text, new Point(rect.X + 7, rect.Y + 2));
                 }
             }
+            else if (Annotation.IsLabel(item))
+            {
+                var bounds = Annotation.Bounds(item); var text = Annotation.Format(item);
+                dc.DrawRoundedRectangle(item.Kind == "number" ? color : Brush("#15202C"), new Pen(color, 2), bounds, item.Kind == "number" ? bounds.Height / 2 : 5, item.Kind == "number" ? bounds.Height / 2 : 5);
+                text.SetForegroundBrush(item.Kind == "number" ? Brush("#15202C") : color);
+                dc.DrawText(text, new Point(bounds.X + (bounds.Width - text.WidthIncludingTrailingWhitespace) / 2, bounds.Y + (bounds.Height - text.Height) / 2));
+            }
             else if (item.Kind is "circle" or "rectangle" or "path")
             {
                 var geometry = Editor.Outline(item);
@@ -100,11 +128,17 @@ public sealed class BoardView : FrameworkElement
             if (item.Erasures.Count > 0) dc.Pop();
             if (entering) dc.Pop();
             dc.Pop();
+            if (entering && progress < 1)
+            {
+                dc.PushOpacity((1 - progress) * .8);
+                dc.DrawEllipse(null, new Pen(Brush("#FFD166"), 2), item.Start, item.Size / 2 + 5 + progress * 12, item.Size / 2 + 5 + progress * 12);
+                dc.Pop();
+            }
             if (DrawEditorChrome && Editing && SelectedIds.Contains(item.Id))
             {
                 if (item.Kind == "hero")
-                    dc.DrawEllipse(null, new Pen(Brushes.White, 2) { DashStyle = DashStyles.Dash }, item.Start, item.Size / 2 + 9 + 5 * (1 - selectionProgress), item.Size / 2 + 9 + 5 * (1 - selectionProgress));
-                else if (SelectedIds.Count == 1)
+                    DrawHeroSelection(dc, item, selectionProgress);
+                else if (SelectedIds.Count == 1 && !Annotation.IsLabel(item))
                     foreach (var p in new[] { item.Start, item.End }) dc.DrawEllipse(Brushes.White, new Pen(color, 2), p, 6, 6);
                 else
                 {
@@ -112,6 +146,16 @@ public sealed class BoardView : FrameworkElement
                     if (!bounds.IsEmpty) { bounds.Inflate(5, 5); dc.DrawRectangle(null, new Pen(Brushes.White, 1.5) { DashStyle = DashStyles.Dash }, bounds); }
                 }
             }
+        }
+        if (DrawEditorChrome && Editing && Motion.CanAnimate && (double)GetValue(ClickProgressProperty) is var click && click < 1)
+        {
+            double radius = 8 + click * 28, fade = (1 - click) * (1 - click);
+            var glow = new RadialGradientBrush(Color.FromArgb(42, 125, 226, 209), Colors.Transparent);
+            dc.PushOpacity(fade);
+            dc.DrawEllipse(glow, null, clickPosition, radius + 8, radius + 8);
+            dc.DrawEllipse(null, new Pen(Brush("#997DE2D1"), 1.5), clickPosition, radius, radius);
+            dc.DrawEllipse(Brush("#CCFFFFFF"), null, clickPosition, 2, 2);
+            dc.Pop();
         }
         if (DrawEditorChrome && Editing && EraserPosition is { } cursor)
             dc.DrawEllipse(null, new Pen(Brush("#FF9C27"), 1.5) { DashStyle = DashStyles.Dot }, cursor, EraserRadius, EraserRadius);
@@ -125,6 +169,56 @@ public sealed class BoardView : FrameworkElement
             dc.DrawRoundedRectangle(Brush("#E6223344"), new Pen(Brush("#FF9C27"), 1), bounds, 5, 5);
             dc.DrawText(hint, new Point(bounds.X + 12, bounds.Y + 8));
         }
+    }
+    private void DrawHeroSelection(DrawingContext dc, SceneItem item, double progress)
+    {
+        var style = HeroSelection;
+        if (style.Shape == HeroSelectionShape.None || style.Opacity <= 0) return;
+        double radius = item.Size / 2 + style.Gap + 3 * (1 - progress);
+        var geometry = new StreamGeometry();
+        using (var path = geometry.Open())
+        {
+            if (style.Shape == HeroSelectionShape.Corners)
+                foreach (int x in new[] { -1, 1 }) foreach (int y in new[] { -1, 1 })
+                {
+                    var corner = item.Start + new Vector(x * radius, y * radius);
+                    double length = Math.Min(style.Length, radius);
+                    path.BeginFigure(corner - new Vector(x * length, 0), false, false);
+                    path.LineTo(corner, true, false); path.LineTo(corner - new Vector(0, y * length), true, false);
+                }
+            else if (style.Shape == HeroSelectionShape.Crosshair)
+                foreach (var direction in new[] { new Vector(-1, 0), new Vector(1, 0), new Vector(0, -1), new Vector(0, 1) })
+                {
+                    path.BeginFigure(item.Start + direction * radius, false, false);
+                    path.LineTo(item.Start + direction * (radius + style.Length), true, false);
+                }
+        }
+        geometry.Freeze();
+        void Draw(string color, double width)
+        {
+            var pen = new Pen(Brush(color), width) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
+            if (style.Shape == HeroSelectionShape.Ring) dc.DrawEllipse(null, pen, item.Start, radius, radius);
+            else dc.DrawGeometry(null, pen, geometry);
+        }
+        dc.PushOpacity(style.Opacity);
+        if (style.Outline) Draw("#15202C", style.Thickness + 2);
+        Draw(style.Color, style.Thickness); dc.Pop();
+    }
+    private static void DrawHeroTrail(DrawingContext dc, SceneItem item, double opacity)
+    {
+        // Brush alpha avoids a separate offscreen opacity surface for every trail/band.
+        var color = (Color)ColorConverter.ConvertFromString(item.Color);
+        void Draw(IReadOnlyList<InkPoint> points, double width, double alpha, bool dashed)
+        {
+            if (alpha <= 0) return;
+            var brush = new SolidColorBrush(Color.FromArgb((byte)Math.Clamp(Math.Round(alpha * 255), 0, 255), color.R, color.G, color.B)); brush.Freeze();
+            var pen = new Pen(brush, width) { LineJoin = PenLineJoin.Round };
+            if (dashed) { pen.DashStyle = new DashStyle(new[] { 3d, 2d }, item.TrailDashOffset / width); pen.DashCap = pen.StartLineCap = pen.EndLineCap = PenLineCap.Round; }
+            pen.Freeze(); var geometry = Editor.Path(points); geometry.Freeze(); dc.DrawGeometry(null, pen, geometry);
+        }
+        if (item.TrailBands is { } bands)
+            foreach (var band in bands) Draw(band.Points, band.Width, opacity * item.Opacity * band.Opacity, false);
+        else Draw(item.Points, item.Width, opacity * item.Opacity, item.Dashed);
     }
     private static Pen Stroke(SceneItem item, Brush brush, double width)
     {

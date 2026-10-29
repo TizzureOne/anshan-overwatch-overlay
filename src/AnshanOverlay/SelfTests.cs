@@ -24,6 +24,92 @@ public static class SelfTests
         Directory.CreateDirectory(output);
         int count = 0;
         void Check(bool condition, string name) { if (!condition) throw new Exception("FAIL: " + name); count++; }
+        if (args.Contains("--text-only"))
+        {
+            await InlineTextTests.RunAsync(Check, output);
+            await AnnotationTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "inline text editing, multiline layout, history, saving and OBS" }));
+            return;
+        }
+        if (args.Contains("--popup-only"))
+        {
+            await PopupInteractionTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count }));
+            return;
+        }
+        if (args.Contains("--combo-probe"))
+        {
+            await ComboFeedbackTests.ProbeAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, passed = count }));
+            return;
+        }
+        if (args.Contains("--experience-probe"))
+        {
+            await ExperienceTests.LayoutProbeAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, passed = count }));
+            return;
+        }
+        if (args.Contains("--experience-only"))
+        {
+            await PopupInteractionTests.RunAsync(Check, output);
+            await ExperienceTests.RunAsync(Check, output);
+            await ComboFeedbackTests.RunAsync(Check, output);
+            await ComfortTests.RunAsync(Check, output);
+            await LectureBarTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "selection customization, click feedback, toolbar resize, names menu and brand interaction" }));
+            return;
+        }
+        if (args.Contains("--comfort-probe"))
+        {
+            await ComfortTests.ProbeAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, passed = count }));
+            return;
+        }
+        if (args.Contains("--comfort-only"))
+        {
+            await ComfortTests.RunAsync(Check, output);
+            await LectureBarTests.RunAsync(Check, output);
+            await HeroTrailsTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "comfort, independent panels, stable trail erasure, hero double-click and high refresh" }));
+            return;
+        }
+        if (args.Contains("--lecture-bar-only"))
+        {
+            await LectureBarTests.RunAsync(Check, output);
+            await TemporaryInkTests.RunAsync(Check, output);
+            await AnnotationTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "lecture bar, persistent logo, contextual tools and affected regressions" }));
+            return;
+        }
+        if (args.Contains("--trail-feedback-probe"))
+        {
+            await TrailFeedbackTests.ProbeAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, passed = count, scope = "trail feedback probe" }));
+            return;
+        }
+        if (args.Contains("--hero-trails-only"))
+        {
+            await HeroTrailsTests.RunAsync(Check, output);
+            await TemporaryInkTests.RunAsync(Check, output);
+            await AnnotationTests.RunAsync(Check, output);
+            await TrailFeedbackTests.ProbeAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "hero trail feedback, actual raster performance, number removal and temporary ink regressions" }));
+            return;
+        }
+        if (args.Contains("--proxy-only"))
+        {
+            await ProxyTests.RunAsync(Check, output);
+            await UpdateTests.RunAsync(Check, output);
+            await HeroDataTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "proxy settings and updater regressions" }));
+            return;
+        }
+        if (args.Contains("--temporary-ink-only"))
+        {
+            await TemporaryInkTests.RunAsync(Check, output);
+            File.WriteAllText(Path.Combine(output, "self-test-result.json"), JsonSerializer.Serialize(new { version = BuildInfo.Version, edition = BuildInfo.Edition, passed = count, scope = "temporary ink and affected integration" }));
+            return;
+        }
         if (args.Contains("--hero-data-live"))
         {
             await HeroDataTests.RunLiveAsync(Check, output);
@@ -43,6 +129,16 @@ public static class SelfTests
             return;
         }
         await UpdateTests.RunAsync(Check, output);
+        await ProxyTests.RunAsync(Check, output);
+        await AnnotationTests.RunAsync(Check, output);
+        await InlineTextTests.RunAsync(Check, output);
+        await TemporaryInkTests.RunAsync(Check, output);
+        await HeroTrailsTests.RunAsync(Check, output);
+        await LectureBarTests.RunAsync(Check, output);
+        await ComfortTests.RunAsync(Check, output);
+        await ExperienceTests.RunAsync(Check, output);
+        await ComboFeedbackTests.RunAsync(Check, output);
+        await PopupInteractionTests.RunAsync(Check, output);
         var manifest = Assets.LoadHeroes();
         var opacityCases = new (SceneItem Item, int X, int Y)[] {
             (new() { HeroId = "ana", X = 50, Y = 50, Size = 40, Opacity = .8 }, 50, 40),
@@ -59,7 +155,7 @@ public static class SelfTests
             opacityBoard.PassThroughOpacity = factor; opacityBoard.InvalidateVisual();
             string image = Path.Combine(output, $"pass-through-opacity-{factor * 100:0}.png"); Render(opacityBoard, 300, 180, image);
             foreach (var sample in opacityCases)
-                Check(Math.Abs(PixelAlpha(image, sample.X, sample.Y) - sample.Item.Opacity * factor * 255) <= 2, $"pass-through opacity multiplies the original opacity for {sample.Item.Kind} arrow={sample.Item.Arrow} at {factor}");
+                Check(Math.Abs(PixelAlpha(image, sample.X, sample.Y) - sample.Item.Opacity * (sample.Item.Kind == "hero" ? factor : 1) * 255) <= 2, $"desktop mode dims only hero icons; correct opacity for {sample.Item.Kind} arrow={sample.Item.Arrow} at {factor}");
             Check(Math.Abs(PixelAlpha(image, 50, 77) - .8 * factor * 255) <= 2, "hero name fades with the rest of its avatar at " + factor);
         }
         opacityBoard.PassThroughOpacity = 0; opacityBoard.DrawEditorChrome = false; opacityBoard.InvalidateVisual();
@@ -138,7 +234,7 @@ public static class SelfTests
             Check(interaction.Current.Items.Count == 1 && interaction.Current.Items[0].X == 620 && action.Tool == tool, "hero drag takes priority and preserves tool " + tool);
         }
         foreach (bool dash in new[] { true, false })
-        foreach (var tool in modes.Where(t => t != EditorTool.Move && t != EditorTool.Eraser))
+        foreach (var tool in modes.Where(t => t is not EditorTool.Move and not EditorTool.Eraser and not EditorTool.Text))
         {
             interaction.Preview(new Scene()); action.Dashed = dash; action.Tool = tool;
             action.Down(new Point(500, 400)); action.Move(new Point(300, 300), false); action.Up();
@@ -318,10 +414,10 @@ public static class SelfTests
         var selectionView = new BoardView { Scene = selectionScene, Width = 800, Height = 600, Heroes = manifest.Heroes, Editing = true,
             SelectedIds = selectionScene.Items.Take(3).Select(i => i.Id).ToHashSet(), SelectionBox = new Rect(new Point(60, 60), new Point(330, 270)) };
         string selectionFile = Path.Combine(output, "selection-chrome.png"); Render(selectionView, 800, 600, selectionFile);
-        Check(PixelAlpha(selectionFile, 159, 120) > 200 && PixelAlpha(selectionFile, 70, 70) > 20, "selected hero outlines and translucent marquee render during editing");
+        Check(PixelAlpha(selectionFile, 156, 84) > 200 && PixelAlpha(selectionFile, 70, 70) > 20, "selected hero outlines and translucent marquee render during editing");
         selectionView.DrawEditorChrome = false; selectionView.InvalidateVisual();
         string cleanSelectionFile = Path.Combine(output, "selection-clean.png"); Render(selectionView, 800, 600, cleanSelectionFile);
-        Check(PixelAlpha(cleanSelectionFile, 159, 120) == 0 && PixelAlpha(cleanSelectionFile, 70, 70) == 0, "selection outlines and marquee stay out of clean output");
+        Check(PixelAlpha(cleanSelectionFile, 156, 84) == 0 && PixelAlpha(cleanSelectionFile, 70, 70) == 0, "selection outlines and marquee stay out of clean output");
         selectionView.DrawEditorChrome = true; selectionView.InvalidateVisual();
         var selectionBackground = new System.Windows.Controls.Grid { Background = BoardView.Brush("#263746") };
         selectionBackground.Children.Add(selectionView); Render(selectionBackground, 800, 600, Path.Combine(output, "multi-selection-preview.png"));
@@ -379,7 +475,7 @@ public static class SelfTests
         string beforePlacement = controller.Store.Serialize();
         controller.Overlay.Place(controller.Screen);
         Check(Native.GetProp(overlayHandle, "NonRudeHWND") == new IntPtr(1) && !controller.Overlay.IsVisible && controller.Store.Serialize() == beforePlacement, "screen placement preserves taskbar compatibility and full scene dimensions without showing a test window");
-        Check(controller.Panel.VersionText.Text == BuildInfo.Label && controller.Panel.Title.Contains(BuildInfo.Version) && controller.Panel.CurrentVersionText.Text.Contains(BuildInfo.Version), "all visible version labels read the built application version");
+        Check(controller.Panel.VersionText.Text == BuildInfo.Label && controller.Panel.CurrentVersionText.Text.Contains(BuildInfo.Version), "all visible version labels read the built application version");
         Check(BuildInfo.Edition is "Full" or "Lite" && BuildInfo.Version.StartsWith(typeof(BuildInfo).Assembly.GetName().Version!.ToString(3)), "version and installer edition are embedded in the built assembly");
         var legacyPreferences = JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!;
         Check(legacyPreferences.AutomaticallyCheckUpdates && legacyPreferences.IncludeBetaUpdates == BuildInfo.IsBeta && legacyPreferences.AnimateInterface && legacyPreferences.PassThroughOpacityPercent == 50 && legacyPreferences.PanelPosition is null && legacyPreferences.ToolbarPosition is null, "old settings get defaults for updates opacity and missing window positions");
@@ -393,12 +489,12 @@ public static class SelfTests
         Check(controller.PassThrough && controller.Store.Current.Items.Count == 1 && !controller.Overlay.Board.Editing, "successful hero drag restores the original click-through mode and keeps the dropped hero");
         Check((Native.GetWindowLong(new WindowInteropHelper(controller.Overlay).Handle, -20) & Native.ExTransparent) != 0, "successful drag also restores the native mouse pass-through flag");
         controller.SetPassThrough(false); controller.Panel.FinishHeroDrag(false);
-        Check(!controller.PassThrough && controller.Panel.ModeStateText.Text.Contains("正在标注") && controller.Toolbar.ModeStateText.Text.Contains("正在标注"), "dragging from edit mode preserves editing and both panels show its actual state");
+        Check(!controller.PassThrough && controller.Panel.ModeStateText.Text.Contains("战术模式") && controller.LectureBar.ModeStateText.Text.Contains("战术模式"), "dragging from edit mode preserves editing and the library and lecture bar show its actual state");
         controller.SetPassThrough(true);
-        Check(controller.Panel.ModeStateText.Text.Contains("鼠标穿透") && controller.Panel.FoldedModeText.Text.Contains(controller.BindingText("edit")) && controller.Overlay.Board.ModeHint.Contains(controller.BindingText("edit")), "mode and the current shortcut remain visible in expanded folded and canvas status");
+        Check(controller.Panel.ModeStateText.Text.Contains("桌面模式") && controller.Panel.FoldedModeText.Text.Contains(controller.BindingText("edit")) && controller.Overlay.Board.ModeHint.Contains(controller.BindingText("edit")), "mode and the current shortcut remain visible in expanded folded and canvas status");
         var modeShortcuts = controller.Settings.Shortcuts.ToDictionary(p => p.Key, p => p.Value);
         modeShortcuts["edit"] = new Shortcut(Key.F9, ModifierKeys.Control | ModifierKeys.Alt); controller.ApplyShortcuts(modeShortcuts);
-        Check(controller.Panel.ModeText.Text.Contains("Ctrl+Alt+F9") && controller.Panel.FoldedModeText.Text.Contains("Ctrl+Alt+F9") && controller.Overlay.Board.ModeHint.Contains("Ctrl+Alt+F9"), "mode indicators follow the customized shortcut instead of a hardcoded default");
+        Check(controller.Panel.ModeStateText.ToolTip.ToString()!.Contains("Ctrl+Alt+F9") && controller.Panel.FoldedModeText.Text.Contains("Ctrl+Alt+F9") && controller.Overlay.Board.ModeHint.Contains("Ctrl+Alt+F9"), "mode indicators follow the customized shortcut instead of a hardcoded default");
         modeShortcuts["edit"] = new Shortcut(Key.E, ModifierKeys.Control | ModifierKeys.Alt); controller.ApplyShortcuts(modeShortcuts);
         controller.Panel.ShowUpdateResult(0, BuildInfo.Version);
         Check(controller.Panel.UpdateStateText.Text.StartsWith("更新完成"), "update completion reports the actually running target version");
@@ -469,7 +565,7 @@ public static class SelfTests
         Check(heroMenu.Items.OfType<System.Windows.Controls.MenuItem>().All(i => !i.HasItems), "hero menu keeps all actions in one popup at screen edges");
         heroMenu.Measure(new Size(264, double.PositiveInfinity));
         int heroMenuHeight = (int)Math.Ceiling(heroMenu.DesiredSize.Height);
-        Check(heroMenuHeight < 320, "hero menu fits on a small display without a secondary popup");
+        Check(heroMenuHeight <= 500, "hero menu including first-level trail controls fits a 500 px popup on a 720p display");
         Render(heroMenu, 264, heroMenuHeight, Path.Combine(output, "hero-context-menu.png"));
         var beforeMenu = controller.Store.Current;
         var beforeMenuSelection = controller.Editor.SelectedId;
@@ -515,7 +611,8 @@ public static class SelfTests
         var groupMenu = controller.Overlay.CreateHeroMenu(groupFirst);
         Check(controller.Editor.SelectedIds.SetEquals(new[] { groupFirst.Id, groupSecond.Id, markedLine.Id }), "right-clicking a selected hero preserves the complete mixed selection");
         Check(((System.Windows.Controls.StackPanel)((System.Windows.Controls.MenuItem)groupMenu.Items[0]).Header).Children.OfType<System.Windows.Controls.StackPanel>().Single().Children.OfType<System.Windows.Controls.TextBlock>().Any(t => t.Text == "已选 2 位英雄"), "group menu identifies how many heroes its commands affect");
-        Check(!groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Any(i => i.IsChecked), "mixed teams and sizes are not misrepresented as a common value");
+        var groupAppearance = groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Where(i => i.Header is string label && (label.EndsWith(" px") || label is "友方 · 蓝色" or "敌方 · 红色")).ToArray();
+        Check(groupAppearance.Length == 8 && !groupAppearance.Any(i => i.IsChecked), "mixed teams and sizes are not misrepresented as a common value");
         groupMenu.Measure(new Size(264, double.PositiveInfinity));
         Render(groupMenu, 264, (int)Math.Ceiling(groupMenu.DesiredSize.Height), Path.Combine(output, "hero-group-context-menu.png"));
         groupMenu.Items.OfType<System.Windows.Controls.MenuItem>().Single(i => Equals(i.Header, "敌方 · 红色")).RaiseEvent(new RoutedEventArgs(System.Windows.Controls.MenuItem.ClickEvent));
@@ -611,18 +708,20 @@ public static class SelfTests
         Render(panelPreview, 474, 900, Path.Combine(output, "control-panel.png"));
         Check(controller.Panel.ModeButton.ActualHeight < 60 && controller.Panel.SearchBox.ActualHeight < 50, "restyled controls retain compact input and action heights");
         var tabs = FindChild<System.Windows.Controls.TabControl>(panelContent)!;
-        tabs.SelectedIndex = 1;
-        Render(panelPreview, 474, 900, Path.Combine(output, "settings-panel.png"));
-        tabs.SelectedIndex = 2;
-        Render(panelPreview, 474, 900, Path.Combine(output, "obs-panel.png"));
-        var exampleUpdate = new UpdateRelease("0.2.0-beta", "修复英雄拖放后画布挡住鼠标的问题。\n新增编辑 / 穿透状态提示。\n改善按钮反馈和面板切换。", new Uri(AppUpdates.ReleasesPage), "Setup.exe", new Uri(AppUpdates.ReleasesPage), 1, new string('0', 64));
-        controller.Panel.ShowAvailableUpdate(exampleUpdate); tabs.SelectedIndex = 3;
+        var managementContent = (FrameworkElement)controller.Management.Content; controller.Management.Content = null;
+        var managementPreview = new System.Windows.Controls.Border { Child = managementContent, Background = Brushes.White };
+        controller.Management.Pages.SelectedIndex = 0;
+        Render(managementPreview, 500, 740, Path.Combine(output, "settings-panel.png"));
+        controller.Management.Pages.SelectedIndex = 1;
+        Render(managementPreview, 500, 740, Path.Combine(output, "obs-panel.png"));
+        var exampleUpdate = new UpdateRelease("0.2.0-beta", "改善英雄拖放、模式反馈和面板切换。", new Uri(AppUpdates.ReleasesPage), "Setup.exe", new Uri(AppUpdates.ReleasesPage), 1, new string('0', 64));
+        controller.Panel.ShowAvailableUpdate(exampleUpdate); controller.Management.Pages.SelectedIndex = 2;
         Check(controller.Panel.UpdateNotice.Visibility == Visibility.Visible && controller.Panel.InstallUpdateButton.IsEnabled && controller.Panel.UpdateNotes.Text == exampleUpdate.Notes, "available update shows a notice notes and an install action");
-        Render(panelPreview, 474, 900, Path.Combine(output, "updates-panel.png"));
-        panelControl.Width = 340; panelControl.Height = 600;
-        Render(panelPreview, 340, 600, Path.Combine(output, "updates-panel-narrow.png"));
+        Render(managementPreview, 500, 740, Path.Combine(output, "updates-panel.png"));
+        Render(managementPreview, 360, 600, Path.Combine(output, "updates-panel-narrow.png"));
         controller.Panel.ShowAvailableUpdate(null);
         Check(controller.Panel.UpdateNotice.Visibility == Visibility.Collapsed && !controller.Panel.InstallUpdateButton.IsEnabled && controller.Panel.UpdateNotes.Text == "", "no update clears old release information and disables install");
+        managementPreview.Child = null; controller.Management.Content = managementContent;
         tabs.SelectedIndex = 0; panelControl.Width = 340; panelControl.Height = 600;
         Render(panelPreview, 340, 600, Path.Combine(output, "panel-narrow.png"));
         var heroViewport = new Rect(controller.Panel.HeroScroll.TranslatePoint(new Point(), panelControl), controller.Panel.HeroScroll.RenderSize);
@@ -648,7 +747,7 @@ public static class SelfTests
         Check(expandPosition.Y >= 36 && expandPosition.Y + controller.Panel.ExpandButton.ActualHeight <= MainWindow.FoldedHeight, "expand action stays reachable below the title bar");
         controller.Panel.SetFolded(true); controller.Panel.SetFolded(false);
         Check(controller.Panel.Height == expandedHeight && controller.Panel.ResizeMode == ResizeMode.CanResizeWithGrip && controller.Panel.Top == 120, "expand restores dimensions and resizing after repeated fold");
-        controller.SetPanelCloseBehavior(PanelCloseBehavior.HidePanel);
+        controller.Settings.CloseBehavior = PanelCloseBehavior.Exit;
         string beforePanelClose = controller.Store.Serialize(); controller.Panel.Close();
         await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
         Check(!controller.IsClosing && Native.IsWindow(new WindowInteropHelper(controller.Panel).Handle) && controller.Store.Serialize() == beforePanelClose, "closing panel keeps program scene and native hotkey window alive");
@@ -776,47 +875,22 @@ public static class SelfTests
         var controller = new Controller(test: true);
         var panel = new WindowInteropHelper(controller.Panel).EnsureHandle();
         var toolbar = new WindowInteropHelper(controller.Toolbar).EnsureHandle();
-        var overlay = new WindowInteropHelper(controller.Overlay).EnsureHandle();
-        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && controller.Panel.CloseBehaviorChoice.SelectedIndex == 0, "first use asks how to close the main panel");
-        Check(JsonSerializer.Deserialize<Preferences>("{}", Assets.Json)!.CloseBehavior == PanelCloseBehavior.Ask, "upgrading settings without a close preference asks on the first close");
-        controller.Store.Edit(scene => scene with { Items = new() { new SceneItem { HeroId = "ana", X = 150, Y = 150 } } });
-        string sceneBefore = controller.Store.Serialize();
-        var dialog = new CloseBehaviorWindow(controller);
-        var dialogHandle = new WindowInteropHelper(dialog).EnsureHandle();
-        Check(dialog.RememberChoice.IsChecked == true && dialog.Owner == controller.Panel && !dialog.ShowInTaskbar && IsAbove(dialogHandle, panel), "close prompt remembers by default and belongs above the main panel");
-        Check(dialog.Background is not null && dialog.FontFamily.Source == controller.Panel.FontFamily.Source && dialog.FontSize == controller.Panel.FontSize, "close prompt uses the application background and typography");
-        var dialogContent = (FrameworkElement)dialog.Content; dialog.Content = null;
-        var preview = new System.Windows.Controls.ContentControl { Content = dialogContent, FontFamily = dialog.FontFamily, FontSize = dialog.FontSize, Foreground = dialog.Foreground };
-        var dialogPreview = new System.Windows.Controls.Border { Background = dialog.Background, Child = preview };
-        dialogPreview.Measure(new Size(424, double.PositiveInfinity));
-        Render(dialogPreview, 424, (int)Math.Ceiling(dialogPreview.DesiredSize.Height), Path.Combine(output, "close-behavior-dialog.png"));
-        Check(dialog.HideInterfaceButton.ActualWidth > 80 && dialog.ExitButton.ActualWidth > 60, "close prompt action labels fit their buttons");
-        preview.Content = null; dialog.Content = dialogContent; dialog.Close();
-        Check(!controller.IsClosing && controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && controller.Store.Serialize() == sceneBefore, "dismissing the close prompt preserves the app preference and scene");
-        var once = new CloseBehaviorWindow(controller); once.RememberChoice.IsChecked = false;
-        once.HideInterfaceButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        Check(!controller.IsClosing && controller.Settings.CloseBehavior == PanelCloseBehavior.Ask && Native.IsWindow(panel) && Native.IsWindow(toolbar) && Native.IsWindow(overlay), "one-time interface close keeps all native windows alive and asks again next time");
-        var remember = new CloseBehaviorWindow(controller);
-        remember.HideInterfaceButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.HidePanel && controller.Panel.CloseBehaviorChoice.SelectedIndex == 1, "remembering interface close updates the settings selector");
-        controller.Panel.ClosePanelButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        Check(!controller.IsClosing && Native.IsWindow(panel) && controller.Store.Serialize() == sceneBefore, "remembered interface close bypasses the prompt and preserves the scene");
-        string settingsPath = Path.Combine(output, "close-behavior-settings.json");
-        File.WriteAllText(settingsPath, JsonSerializer.Serialize(controller.Settings, Assets.Json));
-        Check(JsonSerializer.Deserialize<Preferences>(File.ReadAllText(settingsPath), Assets.Json)!.CloseBehavior == PanelCloseBehavior.HidePanel, "remembered close behavior survives settings file serialization");
-        controller.Panel.CloseBehaviorChoice.SelectedIndex = 0;
-        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Ask, "settings can restore asking on every close");
-        controller.Panel.CloseBehaviorChoice.SelectedIndex = 2;
-        Check(controller.Settings.CloseBehavior == PanelCloseBehavior.Exit && !controller.IsClosing && controller.Panel.ClosePanelButton.ToolTip.ToString()!.Contains("退出程序"), "settings can select exit without immediately closing the app");
+        var overlay = new WindowInteropHelper(controller.Overlay).Handle;
+        string scene = controller.Store.Serialize();
+        foreach (var legacy in new[] { PanelCloseBehavior.Ask, PanelCloseBehavior.HidePanel, PanelCloseBehavior.Exit })
+        {
+            controller.Settings.CloseBehavior = legacy; controller.ShowPanelPage(0);
+            controller.Panel.ClosePanelButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
+            Check(!controller.IsClosing && !controller.HeroLibraryOpen && Native.IsWindow(panel) && Native.IsWindow(toolbar) && Native.IsWindow(overlay), "library X closes only the library with legacy setting " + legacy);
+        }
         controller.Panel.Close();
         await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
-        Check(controller.IsClosing && !Native.IsWindow(panel) && !Native.IsWindow(toolbar) && !Native.IsWindow(overlay), "native panel close follows the saved exit choice without reentering Closing");
-        var exitController = new Controller(test: true);
-        var exitPanel = new WindowInteropHelper(exitController.Panel).EnsureHandle();
-        var exitDialog = new CloseBehaviorWindow(exitController);
-        exitDialog.ExitButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Button.ClickEvent));
-        Check(exitController.IsClosing && !Native.IsWindow(exitPanel) && exitController.Settings.CloseBehavior == PanelCloseBehavior.Exit, "exit from the first-close prompt remembers the choice and closes the program windows");
-        Check(JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(exitController.Settings, Assets.Json), Assets.Json)!.CloseBehavior == PanelCloseBehavior.Exit, "remembered exit choice survives settings serialization");
+        Check(!controller.IsClosing && Native.IsWindow(panel) && controller.Store.Serialize() == scene, "native library close preserves app and scene");
+        controller.Management.Close();
+        await System.Windows.Threading.Dispatcher.Yield(System.Windows.Threading.DispatcherPriority.Background);
+        Check(!controller.IsClosing, "native settings close preserves app");
+        controller.Close();
+        Check(!Native.IsWindow(panel) && !Native.IsWindow(toolbar) && !Native.IsWindow(overlay), "explicit exit closes the complete application");
     }
     private static bool IsAbove(IntPtr window, IntPtr other)
     {
@@ -856,3 +930,6 @@ public static class SelfTests
         var pixel = new byte[4]; bgra.CopyPixels(new Int32Rect(x, y, 1, 1), pixel, 4, 0); return pixel[3];
     }
 }
+
+
+

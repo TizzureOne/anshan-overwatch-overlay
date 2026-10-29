@@ -17,6 +17,14 @@ public sealed class Controller
     public string? HeroDataWarning { get; }
     public SceneStore Store { get; } = new();
     public Editor Editor { get; }
+    public Scene DisplayScene
+    {
+        get
+        {
+            var trails = Editor.Trails.Items; var temporary = Editor.Temporary.Items;
+            return trails.Length + temporary.Length == 0 ? Store.Current : Store.Current with { Items = trails.Concat(Store.Current.Items).Concat(temporary).ToList() };
+        }
+    }
     public Preferences Settings { get; private set; } = new();
     private readonly bool testMode;
     private bool hotkeyHookAdded;
@@ -27,12 +35,16 @@ public sealed class Controller
     public OverlayWindow Overlay { get; }
     public MainWindow Panel { get; }
     public ToolbarWindow Toolbar { get; }
+    public ManagementWindow Management { get; }
+    public LectureBarWindow LectureBar { get; }
+    public bool LectureToolsFolded => Settings.LectureToolsFolded;
+    public bool HeroLibraryOpen { get; internal set; }
     public bool PassThrough { get; private set; } = true;
     public bool AlwaysOnTop { get; private set; } = true;
     public bool IsClosing { get; private set; }
     public string Status { get; private set; } = "从英雄库拖出头像，放到画布上。";
     public string HotkeyWarning { get; private set; } = "";
-    public string ModeState => PassThrough ? "当前：鼠标穿透" : "当前：编辑中 · 画布接收鼠标";
+    public string ModeState => PassThrough ? "桌面模式" : "战术模式";
     public string ModeShortcut => Settings.Shortcuts["edit"].Key == Key.None ? "点击模式按钮切换" : BindingText("edit") + " 切换";
     public string PanelRestoreHint => Settings.Shortcuts["panel"].Key == Key.None ? "可从系统托盘重新打开。" : $"可从系统托盘或 {BindingText("panel")} 重新打开。";
     public List<DisplayInfo> Screens { get; } = Native.Displays();
@@ -52,6 +64,7 @@ public sealed class Controller
         if (!test) { HeroData = new HeroDataUpdates().LoadCache(out var warning); HeroDataWarning = warning; Assets.UseHeroData(HeroData); }
         Motion.Enabled = !test && Settings.AnimateInterface;
         Editor = new Editor(Store); Server = new ObsServer(Heroes);
+        Editor.Trails.Configure(Settings.HeroTrailsEnabled, Settings.HeroTrailStyle, Settings.HeroTrailSeconds);
         Screen = Screens.FirstOrDefault(s => s.Primary) ?? Screens[0];
         autosave = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AnshanOverlay", "autosave.json");
         if (!test && File.Exists(autosave))
@@ -68,44 +81,74 @@ public sealed class Controller
         new WindowInteropHelper(Overlay).EnsureHandle();
         // Windows keeps owned controls above the canvas, including on native reordering.
         Panel = new MainWindow(this) { Owner = Overlay }; Toolbar = new ToolbarWindow(this) { Owner = Overlay };
-        publishTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
-        publishTimer.Tick += (_, _) => { publishTimer.Stop(); Server.Publish(Store.Serialize()); };
+        Management = new ManagementWindow(this, Panel.DetachManagementPages()) { Owner = Overlay };
+        LectureBar = new LectureBarWindow(this) { Owner = Overlay };
+        publishTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(Settings.HighFrameRate ? 1000d / 60 : 1000d / 30) };
+        Editor.Trails.SetHighFrameRate(Settings.HighFrameRate);
+        publishTimer.Tick += (_, _) => { publishTimer.Stop(); PublishDisplay(); };
         saveTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         saveTimer.Tick += (_, _) => { saveTimer.Stop(); if (!test) SaveAuto(); };
         Store.Changed += () =>
         {
+            Editor.Temporary.ClearRedo();
+            if (!Editor.IsMoving) Editor.Trails.RetainHeroes(Store.Current.Items.Where(i => i.Kind == "hero").Select(i => i.Id).ToHashSet());
             Overlay.Refresh();
             if (!publishTimer.IsEnabled) publishTimer.Start();
-            saveTimer.Stop(); saveTimer.Start(); Notify();
+            saveTimer.Stop(); saveTimer.Start(); if (!Editor.IsMoving) Notify();
+        };
+        Editor.Temporary.Changed += () =>
+        {
+            if (IsClosing) return;
+            Overlay.Refresh();
+            if (!publishTimer.IsEnabled) publishTimer.Start();
+            Notify();
+        };
+        Editor.Trails.Changed += () =>
+        {
+            if (IsClosing) return;
+            Overlay.Refresh();
+            if (!publishTimer.IsEnabled) publishTimer.Start();
         };
         Panel.SourceInitialized += (_, _) => { if (!test) RegisterHotkeys(); };
+        Toolbar.SourceInitialized += (_, _) => { if (!test) HwndSource.FromHwnd(new WindowInteropHelper(Toolbar).Handle)?.AddHook(TrackControlFocus); };
+        LectureBar.SourceInitialized += (_, _) => { if (!test) HwndSource.FromHwnd(new WindowInteropHelper(LectureBar).Handle)?.AddHook(TrackControlFocus); };
+        Management.SourceInitialized += (_, _) => { if (!test) HwndSource.FromHwnd(new WindowInteropHelper(Management).Handle)?.AddHook(TrackControlFocus); };
     }
     public async Task StartAsync()
     {
-        try { await Server.StartAsync(); Server.Publish(Store.Serialize()); }
+        try { await Server.StartAsync(); PublishDisplay(); }
         catch (Exception ex) { Status = "OBS 服务未能启动：" + ex.Message; }
-        Overlay.Show(); Overlay.Place(Screen); Overlay.Refresh(); Panel.Show();
+        Overlay.Show(); Overlay.Place(Screen); Overlay.Refresh();
+        // The library stays closed until requested; its hidden HWND owns global hotkeys.
+        new WindowInteropHelper(Panel).EnsureHandle();
+        if (Settings.LectureBarPosition is null)
+        {
+            LectureBar.Left = SystemParameters.WorkArea.Left + 20;
+            LectureBar.Top = SystemParameters.WorkArea.Top + 20;
+        }
+        LectureBar.Show();
         if (Settings.ToolbarPosition is null)
         {
             Toolbar.Left = SystemParameters.WorkArea.Left + Math.Max(0, (SystemParameters.WorkArea.Width - Toolbar.Width) / 2);
             Toolbar.Top = SystemParameters.WorkArea.Bottom - Toolbar.Height - 16;
         }
-        Toolbar.Show();
+        if (!Settings.LectureToolsFolded) Motion.ShowWindow(Toolbar);
         CreateTray(); Notify(); Panel.StartUpdateChecks();
     }
     public void Notify()
     {
-        if (tray is not null) tray.Text = "安山守望 · " + (PassThrough ? "鼠标穿透" : "编辑中") + " · " + BindingText("edit");
+        if (tray is not null) tray.Text = "安山守望 · " + ModeState + " · " + BindingText("edit");
         Changed?.Invoke();
     }
     public void SetStatus(string text) { Status = text; Notify(); }
     public void TogglePassThrough() => SetPassThrough(!PassThrough);
     public void SetPassThrough(bool enabled)
     {
+        if (enabled && !Overlay.TextEditor.Commit()) return;
         if (!enabled)
         {
             var foreground = Native.GetForegroundWindow();
-            if (foreground != new WindowInteropHelper(Overlay).Handle && foreground != new WindowInteropHelper(Panel).Handle && foreground != new WindowInteropHelper(Toolbar).Handle)
+            if (!IsControlWindow(foreground))
                 previousWindow = foreground;
             if (!Store.Current.Visible) Store.Edit(s => s with { Visible = true });
         }
@@ -113,7 +156,7 @@ public sealed class Controller
         PassThrough = enabled; Overlay.SetPassThrough(enabled);
         if (enabled && !testMode && previousWindow != IntPtr.Zero && Native.IsWindow(previousWindow)) Native.SetForegroundWindow(previousWindow);
         if (!enabled && !testMode) { Overlay.Activate(); RaisePanel(); }
-        SetStatus(enabled ? $"鼠标穿透中 · {BindingText("edit")} 恢复编辑。" : $"编辑中 · 拖动头像或绘制；{BindingText("edit")} 返回游戏。");
+        SetStatus(enabled ? $"桌面模式 · {BindingText("edit")} 进入战术模式。" : $"战术模式 · 拖动头像或绘制；{BindingText("edit")} 返回桌面模式。");
     }
     public void ToggleTopmost()
     {
@@ -123,14 +166,34 @@ public sealed class Controller
     }
     public void ToggleVisible()
     {
+        if (!Overlay.TextEditor.Commit()) return;
         Editor.Cancel(); Store.Edit(s => s with { Visible = !s.Visible });
         if (!Store.Current.Visible) SetPassThrough(true);
         SetStatus(Store.Current.Visible ? "标注已显示（桌面与 OBS 同步）。" : "标注已隐藏（桌面与 OBS 同步），内容保留。");
     }
     public void SetTool(EditorTool tool)
     {
+        if (tool != Editor.Tool && !Overlay.TextEditor.Commit()) return;
         Editor.Cancel(); Editor.Tool = tool;
         SetPassThrough(false); Overlay.Refresh(); Notify();
+    }
+    public void SetTemporaryBrush(bool enabled)
+    {
+        Editor.Cancel(); Editor.TemporaryBrush = enabled; Overlay.Refresh(); Notify();
+    }
+    private void PublishDisplay() => Server.Publish(System.Text.Json.JsonSerializer.Serialize(DisplayScene, Assets.Json));
+    public string? SetHeroTrails(bool enabled, HeroTrailStyle style, int seconds)
+    {
+        if (!Enum.IsDefined(style) || seconds < 1 || seconds > 10) return "请选择轨迹样式与 1–10 秒的保留时长。";
+        var before = (Settings.HeroTrailsEnabled, Settings.HeroTrailStyle, Settings.HeroTrailSeconds);
+        Settings.HeroTrailsEnabled = enabled; Settings.HeroTrailStyle = style; Settings.HeroTrailSeconds = seconds;
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            (Settings.HeroTrailsEnabled, Settings.HeroTrailStyle, Settings.HeroTrailSeconds) = before;
+            return "移动轨迹设置未能保存，请检查文件权限后重试。";
+        }
+        Editor.Trails.Configure(enabled, style, seconds); Overlay.Refresh(); Notify(); return null;
     }
     public void SetHeroTeam(string team)
     {
@@ -149,6 +212,22 @@ public sealed class Controller
         try { if (!testMode) Settings.Save(); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         { Settings.AutomaticallyUpdateHeroes = before; return "英雄自动更新设置未能保存，请稍后重试。"; }
+        return null;
+    }
+    public string? ApplyProxyPreferences(NetworkProxyMode mode, string address)
+    {
+        if (!Enum.IsDefined(mode)) return "请选择连接方式。";
+        string savedAddress = Settings.ProxyAddress;
+        if (mode == NetworkProxyMode.Manual)
+        {
+            if (!NetworkProxy.TryParseAddress(address, out var uri)) return NetworkProxy.AddressHint;
+            savedAddress = uri!.AbsoluteUri;
+        }
+        var beforeMode = Settings.ProxyMode; string beforeAddress = Settings.ProxyAddress;
+        Settings.ProxyMode = mode; Settings.ProxyAddress = savedAddress;
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        { Settings.ProxyMode = beforeMode; Settings.ProxyAddress = beforeAddress; return "代理设置未能保存，请检查文件权限后重试。"; }
         return null;
     }
     public bool AddHeroes(IReadOnlyList<Hero> heroes)
@@ -177,22 +256,25 @@ public sealed class Controller
     }
     public void ChangeScreen(DisplayInfo screen)
     {
-        Editor.Cancel(); Screen = screen; Store.Resize(screen.Width, screen.Height);
+        if (!Overlay.TextEditor.Commit()) return;
+        Editor.Cancel(); Editor.Temporary.Clear(); Editor.Trails.Clear(); Screen = screen; Store.Resize(screen.Width, screen.Height);
         if (Overlay.IsLoaded) Overlay.Place(screen);
         SetStatus($"画布 {screen.Width} × {screen.Height} · 请同步修改 OBS 浏览器源尺寸。");
     }
-    public void Undo() { Editor.Cancel(); Store.Undo(); Overlay.Refresh(); }
-    public void Redo() { Editor.Cancel(); Store.Redo(); Overlay.Refresh(); }
-    public void Clear(bool linesOnly) { Editor.Cancel(); Store.Clear(linesOnly); }
-    public void Delete() => Editor.Delete();
+    public void Undo() { if (Overlay.TextEditor.IsEditing) { Overlay.TextEditor.Cancel(); return; } Editor.Cancel(); Editor.Trails.Clear(); if (Editor.Temporary.CanUndo) Editor.Temporary.Undo(); else Store.Undo(); Overlay.Refresh(); }
+    public void Redo() { Overlay.TextEditor.Cancel(); Editor.Cancel(); Editor.Trails.Clear(); if (Editor.Temporary.CanRedo) Editor.Temporary.Redo(); else Store.Redo(); Overlay.Refresh(); }
+    public void Clear(bool linesOnly) { Overlay.TextEditor.Cancel(); Editor.Cancel(); Editor.Temporary.Clear(); Editor.Trails.Clear(); Store.Clear(linesOnly); }
+    public void Delete() { Overlay.TextEditor.Cancel(); Editor.Delete(); }
     public void ReportItemLimit() => SetStatus($"场景最多容纳 {SceneStore.MaxItems} 个对象，本次未添加。请先删除部分内容后重试。");
     public void Duplicate()
     {
+        if (!Overlay.TextEditor.Commit()) return;
         if (!Editor.Duplicate() && Editor.SelectedItems.Length > 0) ReportItemLimit();
         Overlay.Refresh(); Notify();
     }
     public void CancelOrDeselect()
     {
+        if (Overlay.TextEditor.IsEditing) { Overlay.TextEditor.Cancel(); return; }
         if (Editor.IsDragging) { Editor.Cancel(); Overlay.Board.ReleaseMouseCapture(); }
         else if (Editor.SelectedIds.Count > 0) Editor.SelectedId = null;
         else { SetPassThrough(true); return; }
@@ -206,7 +288,48 @@ public sealed class Controller
     {
         Editor.Cancel(); Editor.Dashed = dashed; Notify();
     }
-    public void ShowPanel() { Panel.SetFolded(false); Panel.Show(); Panel.WindowState = WindowState.Normal; Panel.Activate(); if (!Toolbar.IsVisible) { Toolbar.SetFolded(false); Toolbar.Show(); } RaisePanel(); }
+    public void ShowPanel()
+    {
+        ShowPanelPage(0); SetLectureToolsFolded(false);
+        if (!testMode) LectureBar.Show(); RaisePanel();
+    }
+    public void ToggleHeroLibrary()
+    {
+        if (HeroLibraryOpen) Panel.ClosePanel();
+        else ShowPanelPage(0);
+        LectureBar.Refresh();
+    }
+    public void ShowPanelPage(int page)
+    {
+        if (page > 0)
+        {
+            Management.Pages.SelectedIndex = page - 1;
+            if (!testMode)
+            {
+                if (!Management.IsVisible) { Management.Left = LectureBar.Left + 24; Management.Top = LectureBar.Top + LectureBar.Height + 8; }
+                Motion.ShowWindow(Management); WindowLayout.KeepVisible(Management); Management.Activate(); RaisePanel();
+            }
+            return;
+        }
+        HeroLibraryOpen = true; Panel.SetFolded(false); Panel.MainTabs.SelectedIndex = 0; LectureBar.Refresh();
+        if (testMode) return;
+        bool wasHidden = !Panel.IsVisible;
+        if (wasHidden)
+        {
+            Panel.Left = LectureBar.Left + Math.Max(0, LectureBar.Width - Panel.Width);
+            Panel.Top = LectureBar.Top + LectureBar.Height + 8;
+            Panel.Height = Math.Min(Panel.ExpandedHeight, Math.Max(420, SystemParameters.WorkArea.Height - 140));
+            Panel.WindowStartupLocation = WindowStartupLocation.Manual;
+        }
+        Motion.ShowWindow(Panel); Panel.WindowState = WindowState.Normal; WindowLayout.KeepVisible(Panel); Panel.Activate(); RaisePanel(); LectureBar.Refresh();
+    }
+    public void SetLectureToolsFolded(bool folded)
+    {
+        Settings.LectureToolsFolded = folded;
+        if (folded) Motion.HideWindow(Toolbar);
+        else { Toolbar.SetFolded(false); if (!testMode) Motion.ShowWindow(Toolbar); }
+        LectureBar.Refresh(); RaisePanel();
+    }
     public void UpdateHeroes(IReadOnlySet<string> ids, Func<SceneItem, SceneItem> change)
     {
         Editor.Cancel(); Store.Edit(s => s with { Items = s.Items.Select(i => ids.Contains(i.Id) && i.Kind == "hero" ? change(i) : i).ToList() });
@@ -223,16 +346,20 @@ public sealed class Controller
         }
         Overlay.Refresh(); Notify(); return null;
     }
-    public string? SetPanelCloseBehavior(PanelCloseBehavior behavior)
+    public string? SetHighFrameRate(bool enabled)
     {
-        var before = Settings.CloseBehavior; Settings.CloseBehavior = behavior;
+        bool before = Settings.HighFrameRate; Settings.HighFrameRate = enabled;
         try { if (!testMode) Settings.Save(); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-            Settings.CloseBehavior = before;
-            return "关闭行为未能保存，请检查文件权限后重试。";
-        }
-        Notify(); return null;
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Settings.HighFrameRate = before; return "高帧率设置未能保存，请稍后重试。"; }
+        publishTimer.Interval = TimeSpan.FromMilliseconds(enabled ? 1000d / 60 : 1000d / 30);
+        Editor.Trails.SetHighFrameRate(enabled); Notify(); return null;
+    }
+    public string? SetSelectionAppearance(SelectionAppearance appearance)
+    {
+        var previous = Settings.HeroSelection; Settings.HeroSelection = appearance.Normalize();
+        try { if (!testMode) Settings.Save(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Settings.HeroSelection = previous; return "样式未能保存，请稍后重试。"; }
+        Overlay.Refresh(); return null;
     }
     public string? ApplyUpdatePreferences(bool automatic, bool beta, bool animations)
     {
@@ -260,6 +387,8 @@ public sealed class Controller
         Settings.PanelWidth = double.IsFinite(Panel.RestoreBounds.Width) ? Panel.RestoreBounds.Width : Panel.Width; Settings.PanelHeight = Panel.ExpandedHeight;
         Settings.ToolbarWidth = Toolbar.Width; Settings.ToolbarHeight = Toolbar.ExpandedHeight;
         Settings.PanelPosition = WindowLayout.Capture(Panel); Settings.ToolbarPosition = WindowLayout.Capture(Toolbar);
+        Settings.LectureBarWidth = LectureBar.Width; Settings.LectureBarPosition = WindowLayout.Capture(LectureBar);
+        Settings.LectureToolsFolded = LectureToolsFolded;
         Settings.Save();
     }
     public void RaisePanel()
@@ -272,10 +401,17 @@ public sealed class Controller
         var toolbar = Toolbar is null ? IntPtr.Zero : new WindowInteropHelper(Toolbar).Handle;
         if (toolbar != IntPtr.Zero && Toolbar!.WindowState != WindowState.Minimized)
             Native.SetWindowPos(toolbar, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        var lecture = LectureBar is null ? IntPtr.Zero : new WindowInteropHelper(LectureBar).Handle;
+        if (lecture != IntPtr.Zero && LectureBar!.WindowState != WindowState.Minimized)
+            Native.SetWindowPos(lecture, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
+        var management = Management is null ? IntPtr.Zero : new WindowInteropHelper(Management).Handle;
+        if (management != IntPtr.Zero && Management!.WindowState != WindowState.Minimized)
+            Native.SetWindowPos(management, new IntPtr(-1), 0, 0, 0, 0, 0x1 | 0x2 | 0x10);
     }
     public string BindingText(string id) => Settings.Shortcuts[id].ToString();
     public void HandleEditorKey(KeyEventArgs e)
     {
+        if (e.OriginalSource is System.Windows.Controls.Primitives.TextBoxBase || Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
         if (e.IsRepeat) return;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var action = Preferences.Actions.FirstOrDefault(a => !a.Global && Settings.Shortcuts[a.Id] == new Shortcut(key, Keyboard.Modifiers));
@@ -293,6 +429,7 @@ public sealed class Controller
             case "brush": SetTool(EditorTool.Brush); break; case "line": SetTool(EditorTool.Line); break;
             case "arrow": SetTool(EditorTool.Arrow); break; case "circle": SetTool(EditorTool.Circle); break;
             case "rectangle": SetTool(EditorTool.Rectangle); break; case "eraser": SetTool(EditorTool.Eraser); break;
+            case "text": SetTool(EditorTool.Text); break;
             case "dash": SetDashed(!Editor.Dashed); break; case "names": SetHeroNames(!Store.Current.ShowHeroNames); break;
             case "undo": Undo(); break; case "redo": Redo(); break;
             case "duplicate": Duplicate(); break;
@@ -356,16 +493,29 @@ public sealed class Controller
         SetStatus($"已放置 {hero.Name}，可直接拖动。");
         return true;
     }
+    public void AddHeroAtCenter(Hero hero)
+    {
+        if (!PlaceHero(hero, new Point(Store.Current.Width / 2, Store.Current.Height / 2))) return;
+        SetTool(EditorTool.Move);
+        SetStatus($"已在战术板中央添加{hero.Name} · 可拖动调整位置。");
+    }
     private IntPtr HotkeyHook(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
     {
         // WM_ACTIVATE supplies the previously active HWND when the panel is
         // activated. Remember it so a toolbar-driven edit can return focus too.
-        if (msg == 0x0006 && (w.ToInt64() & 0xFFFF) != 0 && l != IntPtr.Zero &&
-            l != new WindowInteropHelper(Overlay).Handle && l != new WindowInteropHelper(Toolbar).Handle && l != hwnd)
-            previousWindow = l;
+        TrackControlFocus(hwnd, msg, w, l, ref handled);
         if (msg != 0x0312) return IntPtr.Zero;
         int index = w.ToInt32() - 1; if (index >= 0 && index < 4) RunAction(Preferences.Actions[index].Id);
         handled = true; return IntPtr.Zero;
+    }
+    private bool IsControlWindow(IntPtr handle) => handle == new WindowInteropHelper(Overlay).Handle ||
+        handle == new WindowInteropHelper(Panel).Handle || handle == new WindowInteropHelper(Toolbar).Handle ||
+        LectureBar is not null && handle == new WindowInteropHelper(LectureBar).Handle ||
+        Management is not null && handle == new WindowInteropHelper(Management).Handle;
+    private IntPtr TrackControlFocus(IntPtr hwnd, int msg, IntPtr w, IntPtr l, ref bool handled)
+    {
+        if (msg == 0x0006 && (w.ToInt64() & 0xFFFF) != 0 && l != IntPtr.Zero && !IsControlWindow(l)) previousWindow = l;
+        return IntPtr.Zero;
     }
     private void CreateTray()
     {
@@ -373,40 +523,45 @@ public sealed class Controller
         trayIcon = new System.Drawing.Icon(iconStream);
         tray = new System.Windows.Forms.NotifyIcon { Text = "安山守望 · 教学标注", Icon = trayIcon, Visible = true };
         var menu = new System.Windows.Forms.ContextMenuStrip();
-        menu.Items.Add("显示控制面板", null, (_, _) => ShowPanel());
-        menu.Items.Add("编辑 / 鼠标穿透", null, (_, _) => TogglePassThrough());
-        menu.Items.Add("恢复鼠标穿透", null, (_, _) => SetPassThrough(true));
-        menu.Items.Add("显示 / 隐藏标注", null, (_, _) => ToggleVisible());
+        menu.Items.Add("恢复浮条与英雄库", null, (_, _) => ShowPanel());
+        menu.Items.Add("战术模式 / 桌面模式", null, (_, _) => TogglePassThrough());
+        menu.Items.Add("返回桌面模式", null, (_, _) => SetPassThrough(true));
+        menu.Items.Add("显示 / 隐藏战术板", null, (_, _) => ToggleVisible());
+        menu.Items.Add("设置与场景", null, (_, _) => ShowPanelPage(3));
         menu.Items.Add("退出", null, (_, _) => Close()); tray.ContextMenuStrip = menu;
         tray.DoubleClick += (_, _) => ShowPanel();
     }
     private void SaveAuto()
     {
-        try { WriteScene(autosave); }
+        try { WriteScene(autosave, finishText: false); }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { SetStatus("自动保存失败：" + ex.Message); }
     }
-    public void WriteScene(string path)
+    public void WriteScene(string path, bool finishText = true)
     {
+        if (finishText && !Overlay.TextEditor.Commit()) throw new InvalidDataException("请先完成或取消当前文字。");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         var temp = path + ".tmp"; File.WriteAllText(temp, Store.Serialize()); File.Move(temp, path, true);
     }
     public void LoadScene(string path)
     {
         var loaded = SceneStore.Parse(File.ReadAllText(path), Heroes.Heroes);
-        Editor.Cancel(); Store.Edit(_ => SceneStore.Scale(loaded, Screen.Width, Screen.Height));
+        Overlay.TextEditor.Cancel();
+        Editor.Cancel(); Editor.Temporary.Clear(); Editor.Trails.Clear(); Store.Edit(_ => SceneStore.Scale(loaded, Screen.Width, Screen.Height));
         if (!Store.Current.Visible) SetPassThrough(true);
         SetStatus("已加载场景，并按当前屏幕等比适配。");
     }
     public async void Close()
     {
-        if (IsClosing) return; IsClosing = true;
+        if (IsClosing || !Overlay.TextEditor.Commit()) return; IsClosing = true;
+        foreach (var window in new Window[] { Panel, Toolbar, LectureBar, Management }) Motion.CancelWindowTransition(window);
         Panel.StopUpdateChecks(); Panel.CancelHeroPreview();
         Motion.FinishResize(Panel); Motion.FinishResize(Toolbar);
-        Editor.Cancel(); publishTimer.Stop(); saveTimer.Stop(); if (!testMode) SaveAuto();
+        Editor.Cancel(); Editor.Temporary.Dispose(); Editor.Trails.Dispose(); publishTimer.Stop(); saveTimer.Stop(); Server.Publish(Store.Serialize()); if (!testMode) SaveAuto();
         var hwnd = new WindowInteropHelper(Panel).Handle;
         foreach (var id in hotkeys) Native.UnregisterHotKey(hwnd, id);
         if (!testMode) try { SaveWindowSettings(); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { System.Diagnostics.Debug.WriteLine(ex); }
-        tray?.Dispose(); trayIcon?.Dispose(); Toolbar.Close(); Panel.Close(); Overlay.Close();
+        tray?.Dispose(); trayIcon?.Dispose(); Management.Close(); LectureBar.Close(); Toolbar.Close(); Panel.Close(); Overlay.Close();
         await Server.DisposeAsync(); if (!testMode) Application.Current.Shutdown();
     }
 }
+

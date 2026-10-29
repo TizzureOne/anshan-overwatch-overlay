@@ -155,7 +155,7 @@ internal static class EdgeCaseTests
         });
         controller.Store.Preview(SceneStore.Parse(beforeLoad, controller.Heroes.Heroes));
         var panel = new WindowInteropHelper(controller.Panel).EnsureHandle();
-        controller.Panel.CloseBehaviorChoice.SelectedIndex = 1;
+        controller.Settings.CloseBehavior = PanelCloseBehavior.Exit;
         controller.Panel.Close();
         await Dispatcher.Yield(DispatcherPriority.Background);
         Probe("hiding the panel retains its native hotkey window and scene", () => !controller.IsClosing && Native.IsWindow(panel) && controller.Store.Serialize() == beforeLoad);
@@ -170,3 +170,4 @@ internal static class EdgeCaseTests
         foreach (var result in results) check(result.Passed, result.Name + (result.Detail.Length == 0 ? "" : " — " + result.Detail));
     }
 }
+

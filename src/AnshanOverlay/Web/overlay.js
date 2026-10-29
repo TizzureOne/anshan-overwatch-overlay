@@ -27,6 +27,10 @@ function shapeNodes(kind) {
   const shape=make(tag,{fill:"none","stroke-linecap":"round","stroke-linejoin":"round"});
   group.append(shape);return {group,shape};
 }
+function labelNodes() {
+  const group=make("g"), background=make("rect", {"stroke-width":2}), text=make("text", {"text-anchor":"middle"});
+  group.append(background,text); return {group,background,text};
+}
 function render(scene) {
   if (scene.heroCatalog) names = scene.heroCatalog;
   set(svg, {viewBox:`0 0 ${scene.width} ${scene.height}`});
@@ -36,7 +40,7 @@ function render(scene) {
     keep.add(item.id);
     let n = nodes.get(item.id);
     if (n && n.kind !== item.kind) { n.group.remove(); nodes.delete(item.id); n = null; }
-    if (!n) { n = item.kind === "hero" ? heroNodes() : item.kind === "line" ? lineNodes() : shapeNodes(item.kind); n.kind = item.kind; nodes.set(item.id, n); }
+    if (!n) { n = item.kind === "hero" ? heroNodes() : item.kind === "line" ? lineNodes() : item.kind === "text" || item.kind === "number" ? labelNodes() : shapeNodes(item.kind); n.kind = item.kind; nodes.set(item.id, n); }
     // Append also restores the scene's stacking order after undo/load.
     svg.append(n.group);
     set(n.group, {opacity:item.opacity ?? 1});
@@ -62,9 +66,31 @@ function render(scene) {
         const w = n.text.getComputedTextLength();
         set(n.labelBg,{x:item.x-w/2-7,y:item.y+r+5,width:w+14,height:size*1.4+4});
       }
+    } else if(item.kind==="text" || item.kind==="number") {
+      const badge=item.kind==="number", layout=item.label;
+      set(n.background,{x:item.x,y:item.y,width:layout.width,height:layout.height,rx:badge?layout.height/2:5,fill:badge?item.color:"#15202C",stroke:item.color});
+      if(layout.lines?.length) {
+        n.text.replaceChildren(...layout.lines.map((line,index) => {
+          const span=make("tspan",{x:item.x+10,y:item.y+layout.baseline+index*layout.lineHeight}); span.textContent=line; return span;
+        }));
+      } else n.text.textContent=item.text;
+      n.text.style.fill=badge?"#15202C":item.color;
+      set(n.text,{x:item.x+layout.width/2,y:item.y+layout.baseline,"font-size":item.fontSize,"text-anchor":layout.lines?.length?"start":"middle","xml:space":"preserve"});
+    } else if(item.trailBands) {
+      n.shape.style.display="none";
+      n.bands ??= [];
+      while(n.bands.length > item.trailBands.length) n.bands.pop().remove();
+      for(let index=0;index<item.trailBands.length;index++) {
+        const band=item.trailBands[index];
+        if(!n.bands[index]) { n.bands[index]=make("polyline",{fill:"none","stroke-linecap":"butt","stroke-linejoin":"round"}); n.group.append(n.bands[index]); }
+        set(n.bands[index],{points:band.points.map(p=>`${p.x},${p.y}`).join(" "),stroke:item.color,"stroke-width":band.width,opacity:band.opacity});
+      }
     } else if(item.kind==="circle" || item.kind==="path" || item.kind==="rectangle") {
+      if(n.bands) { for(const band of n.bands) band.remove(); n.bands=[]; }
+      n.shape.style.display="";
       const attrs=item.kind==="circle"?{cx:(item.x+item.x2)/2,cy:(item.y+item.y2)/2,rx:Math.abs(item.x2-item.x)/2,ry:Math.abs(item.y2-item.y)/2}:item.kind==="rectangle"?{x:Math.min(item.x,item.x2),y:Math.min(item.y,item.y2),width:Math.abs(item.x2-item.x),height:Math.abs(item.y2-item.y)}:{points:item.points.map(p=>`${p.x},${p.y}`).join(" ")};
       attrs["stroke-dasharray"]=item.dashed?`${item.width*3} ${item.width*2}`:"none";
+      attrs["stroke-dashoffset"]=item.trailDashOffset || 0;
       set(n.shape,{...attrs,"stroke-width":item.width,stroke:item.color});
     } else {
       const dx = item.x2-item.x, dy=item.y2-item.y, length=Math.hypot(dx,dy);

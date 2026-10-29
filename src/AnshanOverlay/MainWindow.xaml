@@ -23,13 +23,11 @@
  <Grid x:Name="ExpandedPanel">
   <Grid.RowDefinitions><RowDefinition Height="36"/><RowDefinition Height="48"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
   <Border Grid.Row="1" BorderBrush="#E3E4E6" BorderThickness="0,0,0,1" Padding="12,6">
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-    <TextBlock x:Name="ModeStateText" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" TextWrapping="NoWrap"/>
-    <Button x:Name="ModeButton" Grid.Column="1" Click="ModeClick" Padding="8,4" Background="#F7F7F8" BorderBrush="#D2D5D9" ToolTip="切换画布编辑与鼠标穿透"><TextBlock x:Name="ModeText" FontSize="12" TextWrapping="NoWrap"/></Button>
-   </Grid>
+   <Button x:Name="ModeButton" Click="ModeClick" Padding="8,4" Background="#F7F7F8" BorderBrush="#D2D5D9" ToolTip="切换战术模式与桌面模式" HorizontalAlignment="Left"><TextBlock x:Name="ModeStateText" FontWeight="SemiBold" FontSize="13" TextWrapping="NoWrap"/></Button>
   </Border>
   <Button x:Name="UpdateNotice" Grid.Row="2" Visibility="Collapsed" Click="ShowUpdatesClick" Margin="12,6,12,0" Background="#FFF0DF"><TextBlock x:Name="UpdateNoticeText" FontSize="12"/></Button>
   <TabControl x:Name="MainTabs" Grid.Row="3" Background="White" BorderThickness="0" Padding="0" SelectionChanged="TabChanged">
+   <TabControl.Template><ControlTemplate TargetType="TabControl"><ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent"/></ControlTemplate></TabControl.Template>
    <TabItem Style="{StaticResource PanelTab}" Header="英雄库">
     <Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
      <Grid Margin="12,10,12,5"><TextBox x:Name="SearchBox" TextChanged="SearchChanged" FontSize="13" Padding="10,6" Height="34" ToolTip="搜索全部英雄：中文名、英文名、拼音首字母、常用别名" AutomationProperties.Name="搜索全部英雄"/>
@@ -52,7 +50,7 @@
       <ScrollViewer x:Name="HeroScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
        <ItemsControl x:Name="HeroList"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate><DataTemplate>
-         <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseMove="HeroDragMove" Width="94" Height="92" Tag="{Binding}" Margin="2" Padding="3,6" Style="{StaticResource QuietButton}" ToolTip="{Binding EnglishName}">
+         <Button x:Name="HeroButton" Click="HeroClick" Loaded="HeroButtonLoaded" PreviewMouseLeftButtonDown="HeroDragStart" PreviewMouseDoubleClick="HeroDoubleClick" PreviewMouseMove="HeroDragMove" Width="94" Height="92" Tag="{Binding}" Margin="2" Padding="3,6" Style="{StaticResource QuietButton}" ToolTip="{Binding EnglishName}">
           <StackPanel><Image Source="{Binding Portrait}" Width="52" Height="52" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="13" Margin="0,5,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" MaxWidth="86"/></StackPanel>
          </Button>
         </DataTemplate></ItemsControl.ItemTemplate>
@@ -71,12 +69,12 @@
    <TabItem Style="{StaticResource PanelTab}" Header="场景">
     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12,10,12,10">
      <Button Content="自定义快捷键…" Click="ShortcutsClick" Margin="0,0,0,16"/>
-     <TextBlock Text="鼠标穿透时的标注透明度" FontWeight="Bold" Margin="0,0,0,8"/>
+     <TextBlock Text="桌面模式时的图标透明度" FontWeight="Bold" Margin="0,0,0,8"/>
      <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="45"/></Grid.ColumnDefinitions>
-      <Slider x:Name="PassThroughOpacity" Minimum="0" Maximum="100" Value="50" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="PassThroughOpacityChanged" VerticalAlignment="Center" ToolTip="英雄头像和全部标注相对于原透明度的显示比例" AutomationProperties.Name="鼠标穿透时的标注透明度百分比"/>
+      <Slider x:Name="PassThroughOpacity" Minimum="0" Maximum="100" Value="50" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="PassThroughOpacityChanged" VerticalAlignment="Center" ToolTip="桌面模式下英雄图标的显示比例；不改变画线和文字" AutomationProperties.Name="桌面模式时的图标透明度百分比"/>
       <TextBlock x:Name="PassThroughOpacityText" Grid.Column="1" Text="50%" HorizontalAlignment="Right" VerticalAlignment="Center"/>
      </Grid>
-     <TextBlock Text="默认 50%；0% 隐藏，100% 保持原样。进入编辑时恢复原透明度。仅影响桌面显示。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,18"/>
+     <TextBlock Text="默认 50%；0% 隐藏图标，100% 保持原样。进入战术模式时恢复原透明度；OBS 输出不受影响。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,18"/>
      <TextBlock Text="场景操作" FontWeight="Bold" Margin="0,0,0,10"/>
      <UniformGrid Columns="2"><Button x:Name="UndoButton" Content="撤销" Click="UndoClick" Margin="0,0,5,7"/><Button x:Name="RedoButton" Content="重做" Click="RedoClick" Margin="5,0,0,7"/><Button Content="复制选中" Click="DuplicateClick" Margin="0,0,5,7"/><Button Content="删除选中" Click="DeleteClick" Margin="5,0,0,7"/><Button Content="清除标注" Click="ClearLinesClick" Margin="0,0,5,7"/><Button Content="清空全部" Click="ClearAllClick" Margin="5,0,0,7"/></UniformGrid>
      <TextBlock Text="清空可撤销。头像选中后，滚轮可直接调整大小。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,3,0,16"/>
@@ -108,11 +106,22 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="12,10,12,10">
      <TextBlock x:Name="VersionText" FontSize="12" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,6"/>
      <TextBlock x:Name="CurrentVersionText" FontWeight="Bold" Margin="0,0,0,12"/>
-     <TextBlock Text="点击主面板右上角 × 时" FontWeight="SemiBold" Margin="0,0,0,6"/>
-     <ComboBox x:Name="CloseBehaviorChoice" SelectionChanged="CloseBehaviorChanged" Margin="0,0,0,6" AutomationProperties.Name="关闭主面板时的行为">
-      <ComboBoxItem Content="每次询问"/><ComboBoxItem Content="仅关闭界面"/><ComboBoxItem Content="退出程序"/>
-     </ComboBox>
-     <TextBlock x:Name="CloseBehaviorHint" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,16"/>
+     <TextBlock Text="面板右上角 × 只关闭该面板。退出程序请使用浮条菜单或系统托盘中的“退出程序”。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,16"/>
+     <StackPanel x:Name="SelectionSettingsHost" Margin="0,0,0,20"/>
+     <CheckBox x:Name="HighFrameRate" Content="高帧率模式（目标 60 FPS）" Checked="HighFrameRateChanged" Unchecked="HighFrameRateChanged"/>
+     <TextBlock Text="将轨迹刷新与 OBS 同步从约 30 提高到约 60 次/秒。更流畅，也会增加 CPU / GPU 占用；实际帧率取决于硬件与场景复杂度。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,16"/>
+     <StackPanel x:Name="ProxySettingsPanel" Margin="0,0,0,18">
+      <TextBlock Text="网络代理" FontWeight="SemiBold" Margin="0,0,0,6"/>
+      <ComboBox x:Name="ProxyModeChoice" SelectionChanged="ProxyModeChanged" Margin="0,0,0,8" AutomationProperties.Name="网络连接方式">
+       <ComboBoxItem Content="跟随系统（默认）"/><ComboBoxItem Content="不使用代理"/><ComboBoxItem Content="手动代理"/>
+      </ComboBox>
+      <TextBlock Text="代理地址" Margin="0,0,0,5"/>
+      <TextBox x:Name="ProxyAddressBox" TextChanged="ProxyAddressChanged" MaxLength="2048" IsEnabled="False" Margin="0,0,0,5" AutomationProperties.Name="代理地址"/>
+      <TextBlock Text="例如 http://127.0.0.1:7890 或 socks5://127.0.0.1:1080。支持 HTTP、HTTPS、SOCKS5，无账号密码。" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,0,0,8"/>
+      <Button x:Name="SaveProxyButton" Content="保存代理设置" Click="SaveProxyClick" HorizontalAlignment="Left" Margin="0,0,0,6"/>
+      <TextBlock x:Name="ProxyStateText" FontSize="12" Margin="0,0,0,6"/>
+      <TextBlock Text="用于软件更新及英雄资料下载；正在进行的请求沿用原设置。打开下载页后使用浏览器自身的代理设置。" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+     </StackPanel>
      <TextBlock Text="英雄数据" FontWeight="SemiBold" Margin="0,0,0,6"/>
      <TextBlock x:Name="HeroDataSummary" FontSize="12" Margin="0,0,0,6"/>
      <CheckBox x:Name="AutomaticHeroUpdates" Content="启动时自动更新英雄数据" Checked="HeroUpdatePreferenceChanged" Unchecked="HeroUpdatePreferenceChanged"/>
@@ -138,17 +147,17 @@
    <StackPanel><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
     <Button x:Name="VisibleButton" Click="VisibleClick" Style="{StaticResource QuietButton}"><StackPanel Orientation="Horizontal"><Path Data="M 1,8 C 5,1 11,1 15,8 C 11,15 5,15 1,8 Z M 5,8 A 3,3 0 1 1 5,8.01" Stroke="#42484F" StrokeThickness="1.2" Width="16" Height="16" Margin="0,0,5,0"/><TextBlock x:Name="VisibleLabel" FontSize="12"/></StackPanel></Button>
     <Button x:Name="TopmostButton" Grid.Column="1" Click="TopmostClick" Style="{StaticResource QuietButton}"><StackPanel Orientation="Horizontal"><Path Data="M 4,1 L 12,1 L 10,7 L 13,10 L 3,10 L 6,7 Z M 8,10 L 8,16" Stroke="#42484F" StrokeThickness="1.2" Width="16" Height="16" Margin="0,0,5,0"/><TextBlock x:Name="TopmostLabel" FontSize="12"/></StackPanel></Button>
-    <Button Grid.Column="2" HorizontalAlignment="Right" ToolTip="折叠面板" AutomationProperties.Name="折叠面板" Click="FoldClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 6,2 L 11,7 M 1,11 L 6,6 L 11,11" Width="12" Height="13" Stroke="#42484F" StrokeThickness="1.2"/></Button>
+    <Button Grid.Column="2" HorizontalAlignment="Right" ToolTip="折叠面板" AutomationProperties.Name="折叠面板" Click="FoldClick" Width="30" MinHeight="28" Height="28" Padding="4" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 6,2 L 11,7 M 1,11 L 6,6 L 11,11" Width="12" Height="13" Stroke="#42484F" StrokeThickness="1.2"/></Button>
    </Grid><Grid Margin="6,3,6,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions><TextBlock x:Name="ObjectCount" Foreground="#67768A" FontSize="11" TextWrapping="NoWrap"/><TextBlock x:Name="StatusText" Grid.Column="1" Text="自动保存" Foreground="#67768A" FontSize="11" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" HorizontalAlignment="Right" MaxWidth="160" Margin="10,0,0,0"/></Grid></StackPanel>
   </Border>
  </Grid>
  <Border Height="36" VerticalAlignment="Top" Background="#F7F7F8" Padding="10,0,4,0"><Grid>
   <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-  <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="AppMark" Width="20" Height="20" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="安山守望" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
+  <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Image x:Name="AppMark" Width="20" Height="20" Margin="0,0,7,0" RenderOptions.BitmapScalingMode="HighQuality"/><TextBlock Text="英雄库" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/></StackPanel>
   <StackPanel x:Name="WindowActions" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-   <Button x:Name="MoreButton" Content="···" FontSize="18" ToolTip="更多操作" AutomationProperties.Name="更多操作" Click="MoreClick" Width="30" Style="{StaticResource QuietButton}"/>
-   <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
-   <Button x:Name="ClosePanelButton" ToolTip="关闭" AutomationProperties.Name="关闭面板" Click="CloseClick" Width="30" Style="{StaticResource QuietButton}"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
+   <Button x:Name="MoreButton" Content="···" FontSize="18" ToolTip="更多操作" AutomationProperties.Name="更多操作" Click="MoreClick" Width="30" MinHeight="28" Height="28" Padding="3" Style="{StaticResource QuietButton}"/>
+   <Button x:Name="MinimizeButton" ToolTip="最小化" AutomationProperties.Name="最小化" Click="MinimizeClick" Width="30" MinHeight="28" Height="28" Padding="4" Style="{StaticResource QuietButton}"><Path Data="M 1,7 L 13,7" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
+   <Button x:Name="ClosePanelButton" ToolTip="关闭英雄库" AutomationProperties.Name="关闭英雄库" Click="CloseClick" Width="30" MinHeight="28" Height="28" Padding="4" Style="{StaticResource QuietButton}"><Path Data="M 2,2 L 12,12 M 12,2 L 2,12" Width="14" Height="14" Stroke="#42484F" StrokeThickness="1.2"/></Button>
   </StackPanel>
  </Grid></Border>
  </Grid></Border>
