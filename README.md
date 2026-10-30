@@ -4,7 +4,7 @@
 
 ## 下载
 
-[版本下载](https://github.com/TizzureOne/anshan-overwatch-overlay/releases) · 当前版本 0.1.14-beta · Windows 10/11 x64
+[版本下载](https://github.com/TizzureOne/anshan-overwatch-overlay/releases)
 
 两种安装包功能相同：
 
@@ -13,7 +13,7 @@
 
 安装后从开始菜单启动。免安装版解压后双击 `AnshanOverlay.exe`。
 
-内置 54 位英雄头像（含血律），黑影位于“支援”分类。英雄资料默认在启动时独立更新，也可在“设置 → 英雄数据”手动检查，无需重装或重启；断网或更新失败时沿用已有资料。
+英雄资料默认在启动时独立更新，也可在“设置 → 英雄数据”手动检查，无需重装或重启；断网或更新失败时沿用已有资料。
 
 ## 使用
 
